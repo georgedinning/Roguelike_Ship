@@ -6,7 +6,7 @@
 
 **Genre:** Top-down 2D ship roguelike
 
-**Elevator Pitch:** Navigate a starship through hazardous space sectors. Progress along a distance bar, encounter asteroid fields and enemy ships, earn upgrades mid-run, and defeat a boss to advance. Manage your ship's power systems and use time controls to outmanoeuvre threats.
+**Elevator Pitch:** Pilot a stationary starship through hazardous space sectors. Progress along a distance bar, encounter asteroid fields and enemy ships, earn upgrades mid-run, and defeat a boss to advance. Manage your ship's power systems and use time controls to outmanoeuvre threats. The ship is a fixed target — survival depends on tactical power allocation and ability timing, not movement.
 
 **Target Audience:** Players who enjoy roguelikes (FTL, Hades), top-down shooters, and games with tactical depth through resource management.
 
@@ -30,11 +30,12 @@ Enter Stage → Progress Distance Bar → Warning → Encounter → Defeat → C
 
 ## 3. Stage & Distance Bar
 
-The distance bar (existing `DistanceBar.cs`) is the core progression axis.
+The distance bar (`DistanceBar.cs`) is the core progression axis.
 
 - **Bar Structure:** A vertical (top-to-bottom) progress bar representing the length of the stage.
 - **Encounter Points:** Fixed positions along the bar where encounters are placed (e.g. 30%, 60%, 90%, 100% = boss).
-- **Warning System:** When the ship approaches an encounter point, a visual/audio warning is issued (e.g. "Asteroid field detected ahead", "Hostile signature incoming").
+- **Encounter Markers:** Each encounter has a HUD icon positioned at its trigger point on the bar. Icons are white (pending), red (active), grey (completed).
+- **Warning System:** *(Not yet implemented)* When the ship approaches an encounter point, a visual/audio warning is issued (e.g. "Asteroid field detected ahead", "Hostile signature incoming").
 - **Stage Completion:** Reaching 100% triggers the boss encounter.
 - **Boss Enemy:** A large, unique enemy ship at the end of each stage with distinct attack patterns.
 
@@ -44,12 +45,15 @@ The distance bar (existing `DistanceBar.cs`) is the core progression axis.
 
 The player has command over time and ship systems, enabling tactical play rather than pure reaction.
 
-### Time Controls
-- **Pause:** Freezes all action. Player can assess the situation, toggle systems, and queue decisions.
-- **Normal Speed:** Default 1× real-time.
+### Time Controls *(Implemented)*
+- **Pause:** Freezes all action (timeScale = 0). Player can assess the situation, toggle systems, and queue decisions.
+- **Normal Speed:** Default 1× real-time (timeScale = 1).
+- **Fast Forward:** 2× speed (timeScale = 2). Configurable in inspector.
+- **Toggle:** Space key, or UI buttons (Pause / Play / Fast).
+- **Affects:** All gameplay — physics, cooldowns, stage timer, bullet lifetime, turret rotation.
 - *(Future: Slow-mo button as a limited resource)*
 
-### Ship Systems
+### Ship Systems *(Not yet implemented)*
 The ship has several systems that can be toggled on or off. Each consumes from a limited **power budget**.
 
 | System | Power | Effect When On |
@@ -67,25 +71,32 @@ The player must make trade-offs: power down shields for more weapon uptime, dive
 
 ## 5. Encounters
 
-### Asteroid Fields (Environmental)
-- Hazard zone on the distance bar.
-- Floating asteroids that damage the ship on contact.
-- Navigation matters — the player can try to dodge through or use time controls to pick a safe path.
-- Asteroids can be shot and destroyed (costs ammo/cooldown time).
+### Encounter System *(Implemented)*
+- Abstract `Encounter` base class with `triggerPoint` (0–1) and `OnTrigger()`.
+- Encounters are sorted by trigger point and fired sequentially as the bar progresses.
+- `EncounterSpawner` instantiates encounters programmatically and registers them with `GameManager`.
+- Each encounter has a HUD marker on the distance bar that turns red on trigger, grey on completion.
 
-### Enemy Ships (Combat)
+### Asteroid Fields *(Implemented)*
+- `AsteroidFieldEncounter` spawns asteroids in a band above the player.
+- Asteroids float downward, drift sideways, and spin.
+- Asteroids can be shot and destroyed (via bullet collision).
+- Asteroids self-destroy when they fall below the camera view.
+- The encounter auto-completes (grey icon) when all spawned asteroids are destroyed or off-screen.
+
+### Enemy Ships (Combat) *(Not yet implemented)*
 - Hostile ships that engage the player.
 - Different enemy types with varying behaviours (e.g. chasers, turrets, bombers).
 - Defeating an enemy ship rewards an upgrade choice.
 
-### Boss Fights
+### Boss Fights *(Not yet implemented)*
 - Unique boss at the end of each stage.
 - Multiple phases, distinct attack patterns.
 - Defeating the boss advances to the next stage.
 
 ---
 
-## 6. Roguelike Progression (Mid-Run Upgrades)
+## 6. Roguelike Progression (Mid-Run Upgrades) *(Not yet implemented)*
 
 There is no persistent currency or meta-progression. All upgrades are earned during the run.
 
@@ -94,7 +105,7 @@ There is no persistent currency or meta-progression. All upgrades are earned dur
   - **Weapon Mods:** Fire rate, damage, bullet speed, spread, element effects
   - **Hull:** Max HP, armour, collision damage
   - **Systems:** Increased power budget, system efficiency
-  - **Abilities:** Active abilities (e.g. dodge roll, EMP blast, repair drone)
+  - **Abilities:** Active abilities (e.g. EMP blast, repair drone)
 - **Build Synergies:** Upgrades should interact so players can build toward a strategy (e.g. high shield regen + low HP, or glass cannon + speed).
 - Upgrades are lost on death.
 
@@ -106,10 +117,11 @@ There is no persistent currency or meta-progression. All upgrades are earned dur
 |---|---|
 | Mouse move | Aim turret |
 | Left mouse (hold) | Fire weapons |
-| WASD / Arrow keys | Ship movement |
 | Space | Pause / unpause time |
-| 1–5 keys | Toggle ship systems on/off |
+| 1–5 keys | Toggle ship systems on/off (future) |
 | *(Future)* | Active ability keybinds |
+
+The ship is stationary and does not use WASD/arrow movement. All tactical depth comes from time controls, power management, and active abilities.
 
 ---
 
@@ -118,8 +130,8 @@ There is no persistent currency or meta-progression. All upgrades are earned dur
 - **Art Style:** Lighter, cartoony 2D. Bright colours, clean sprites.
 - **URP 2D Lighting:** Soft glow effects for thrusters, muzzle flash, explosions, shield hits.
 - **UI:** Clean, readable. Distance bar is prominent. System status shown at a glance.
-- **Screen Shake / Feedback:** Juice on hits, kills, and boss phases.
-- **Sound:** (Future) Upbeat electronic soundtrack, punchy SFX for weapons and impacts.
+- **Screen Shake / Feedback:** *(Future)* Juice on hits, kills, and boss phases.
+- **Sound:** *(Future)* Upbeat electronic soundtrack, punchy SFX for weapons and impacts.
 
 ---
 
@@ -127,15 +139,35 @@ There is no persistent currency or meta-progression. All upgrades are earned dur
 
 ### Current Implementation State
 - Player ship sprite, turret sprites exist.
-- `ModGatling` turret aims at cursor and fires bullets (scene serialized).
-- `Bullet` prefab with lifetime and Rigidbody2D.
-- `DistanceBar` UI progress bar functional.
-- `GameManager` drives stage timer.
+- `ModGatling` turret aims at cursor and fires bullets, smooth rotation uses `rotationSpeed`.
+- `Bullet` prefab with lifetime, damage, collision with asteroids.
+- `TimeController` with pause/play/fast states, Space toggle, UI buttons.
+- `DistanceBar` UI progress bar functional, encounter markers auto-positioned.
+- `GameManager` drives stage timer with singleton, sorted encounter list.
+- `Encounter` abstract class with `Fire()`, `MarkCompleted()`, HUD icon lifecycle.
+- `AsteroidFieldEncounter` spawns asteroids, auto-completes when cleared.
+- `EncounterSpawner` programmatically creates encounters with trigger points.
+- `Asteroid` with physics, damage, off-screen cleanup.
+- `Player` health, collision damage, invincibility frames, death.
 
 ### Known Gaps (from instructions.md)
-- No enemy/AI system, spawner, collision/damage.
-- No health system.
 - `ShipModule.cs` is an empty stub.
-- `rotationSpeed` in `ModGatling` unused.
-- DistanceBar positioning may have off-by-one bugs.
+- No enemy/AI system (chasers, turrets, bombers).
+- No boss fights.
+- No ship systems / power budget management.
+- No warning system before encounter triggers.
+- No roguelike upgrade system.
+- No stage lifecycle (start/end events, multi-stage progression).
 - No Input Action Map integration (uses legacy input).
+
+### Future Feature Priority
+| Priority | Feature | Notes |
+|---|---|---|
+| 1 | Ship systems & power budget | Weapons/shields/engines/sensors toggleable, limited power, 1–5 keys |
+| 2 | Warning system | Visual/audio cue before encounter triggers, ties into sensors |
+| 3 | Shields | Absorbs damage, regenerates slowly |
+| 4 | Enemy ships (AI combat) | Next encounter type after asteroid fields |
+| 5 | Boss fights | Unique boss at 100%, multiple phases |
+| 6 | Roguelike upgrades | Mid-run choices after defeating encounters |
+| 7 | `ShipModule.cs` base class | Shared interface for all modules |
+| 8 | Stage lifecycle | Start/end events, multi-stage progression, permadeath |

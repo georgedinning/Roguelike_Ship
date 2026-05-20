@@ -57,14 +57,23 @@ Roguelike_Ship/
 │   │   │   └── HUD/                      # (empty, reserved for HUD sprites)
 │   │   └── ...
 │   ├── Prefab/
-│   │   └── Bullet.prefab                 # Bullet projectile prefab
+│   │   ├── Bullet.prefab                 # Bullet projectile prefab
+│   │   ├── Asteroid.prefab               # Asteroid enemy prefab
+│   │   └── Encounters/
+│   │       └── AsteroidFieldEncounter.prefab  # Asteroid field encounter prefab
 │   ├── Scenes/
 │   │   └── SampleScene.unity             # Main game scene
 │   ├── Scripts/
-│   │   ├── GameManager.cs                # Stage timer & distance bar driver
+│   │   ├── GameManager.cs                # Stage timer, encounter list, singleton
 │   │   ├── Player.cs                     # Player health, collision, death
 │   │   ├── Bullet.cs                     # Projectile lifetime & cleanup
-│   │   ├── DistanceBar.cs                # UI progress bar (top-to-bottom)
+│   │   ├── Asteroid.cs                   # Enemy asteroid physics & damage
+│   │   ├── DistanceBar.cs                # UI progress bar, encounter marker positioning
+│   │   ├── TimeController.cs             # Time state management (pause/play/fast)
+│   │   ├── TimeControlUI.cs              # UI buttons for time controls
+│   │   ├── Encounter.cs                  # Abstract encounter base class
+│   │   ├── AsteroidFieldEncounter.cs     # Spawns asteroids on trigger
+│   │   ├── EncounterSpawner.cs           # Programmatic encounter generation
 │   │   └── Ship Modules/
 │   │       ├── ShipModule.cs             # Base class (empty stub)
 │   │       └── ModGatling.cs             # Mouse-aimed gatling turret
@@ -86,40 +95,132 @@ Roguelike_Ship/
 ### `GameManager.cs`
 - **Path:** `Assets/Scripts/GameManager.cs`
 - **Base:** `MonoBehaviour`
-- **Purpose:** Top-level stage controller. Drives the stage timer and updates the distance bar each frame.
+- **Purpose:** Top-level stage controller. Singleton. Drives the stage timer, holds the sorted encounter list, and triggers encounters as progress advances.
 - **Key Fields:**
+  - `Instance` (`static GameManager`) — singleton accessor
   - `_distanceBar` (`DistanceBar`) — reference to the UI progress bar
-  - `timeFactor` (`float`) — time scale multiplier (stage speed)
+  - `_encounterSpawner` (`EncounterSpawner`) — spawns encounters on stage start
+  - `encounters` (`List<Encounter>`) — sorted list of active encounters
   - `totalStageDuration` (`float`) — total length of the stage in seconds
   - `timeSinceStageStart` (`float`, private) — elapsed time for current stage
+  - `nextEncounterIndex` (`int`, private) — cursor into the sorted encounter list
 - **Key Methods:**
-  - `Start()` — initialises `timeSinceStageStart = 0`
-  - `Update()` — increments timer by `Δtime × timeFactor`, pushes progress to `_distanceBar.progressBar()`
-- **Relationships:** Depends on `DistanceBar`
+  - `Awake()` — sets singleton Instance
+  - `Start()` — initialises timer, sorts encounters, calls `_encounterSpawner.GenerateStageEncounters()`
+  - `Update()` — increments timer by `Δtime × timeScale`, pushes progress to bar, checks encounters
+  - `RegisterEncounter(Encounter)` — adds encounter to list, re-sorts by triggerPoint
+  - `CheckEncounters()` — fires next encounter when its triggerPoint is reached, advances cursor
+- **Relationships:** Depends on `DistanceBar`, `EncounterSpawner`, `Encounter`, `TimeController`
 
-### `Bullet.cs`
-- **Path:** `Assets/Scripts/Bullet.cs`
+### `TimeController.cs`
+- **Path:** `Assets/Scripts/TimeController.cs`
 - **Base:** `MonoBehaviour`
-- **Purpose:** Projectile behaviour — auto-destructs after lifetime expires.
+- **Purpose:** Manages time state (Paused/Normal/Fast) via `Time.timeScale`. Singleton with UI button and keyboard (Space) controls.
 - **Key Fields:**
-  - `_lifetime` (`float`) — seconds before the bullet is destroyed (set from prefab)
+  - `Instance` (`static TimeController`) — singleton accessor
+  - `pausedScale`, `normalScale`, `fastScale` (`float`) — time scale for each state
+  - `pauseToggleKey` (`KeyCode`) — key to toggle pause (default Space)
+  - `CurrentState` (`TimeState`) — current time state (Paused/Normal/Fast)
+  - `CurrentTimeScale` (`static float`) — convenience accessor for `Time.timeScale`
 - **Key Methods:**
-  - `Update()` — decrements `_lifetime` by `Δtime`, destroys the GameObject when ≤ 0
-- **Notes:** Disables self before destroying. No collision logic yet.
+  - `Pause()`, `SetNormal()`, `SetFast()` — set state directly
+  - `TogglePause()` — toggles between Paused and Normal
+  - `Update()` — handles Space key input
+- **Events:**
+  - `OnTimeStateChanged` — fired when time state changes
+- **Relationships:** Used by `TimeControlUI`, `GameManager`, `ModGatling`
+
+### `TimeControlUI.cs`
+- **Path:** `Assets/Scripts/TimeControlUI.cs`
+- **Base:** `MonoBehaviour`
+- **Purpose:** UI buttons for time controls. Subscribes to `TimeController.OnTimeStateChanged` and tints active button.
+- **Key Fields:**
+  - `_pauseButton`, `_playButton`, `_fastButton` (`Button`) — UI button references
+  - `activeColor`, `inactiveColor` (`Color`) — tint for button state
+- **Key Methods:**
+  - `Start()` — wires button onClick listeners, subscribes to TimeController event
+  - `UpdateButtonVisuals(TimeState)` — highlights the active button
+
+### `Encounter.cs`
+- **Path:** `Assets/Scripts/Encounter.cs`
+- **Base:** `MonoBehaviour`
+- **Purpose:** Abstract base class for all encounter types. Each has a trigger point along the distance bar and a HUD marker icon.
+- **Key Fields:**
+  - `triggerPoint` (`float`) — progress [0,1] at which this encounter activates
+  - `_hudIconTexture` (`Texture2D`) — custom texture for the HUD marker (optional, auto-generates a white circle if null)
+  - `_hudIconImage` (`Image`, private get) — runtime Image component assigned by DistanceBar
+- **Key Methods:**
+  - `Fire()` — sets icon red, calls `OnTrigger()`
+  - `MarkCompleted()` — sets icon grey, disables component
+  - `SetIconPosition(Vector2)` — positions the HUD icon
+  - `AssignIconImage(Image)` — called by DistanceBar to wire the runtime icon
+  - `abstract OnTrigger()` — derived classes implement their encounter behaviour
+- **Relationships:** Parent class for `AsteroidFieldEncounter` (and future encounter types)
+
+### `AsteroidFieldEncounter.cs`
+- **Path:** `Assets/Scripts/AsteroidFieldEncounter.cs`
+- **Base:** `Encounter`
+- **Purpose:** Spawns a field of asteroids above the player. Auto-completes when all asteroids are destroyed or off-screen.
+- **Key Fields:**
+  - `_asteroidPrefab` (`GameObject`) — prefab to spawn
+  - `count` (`int`) — number of asteroids (default 30)
+  - `spawnArea` (`Vector2`) — Y-range for spawn positions
+  - `spawnedAsteroids` (`List<GameObject>`, private) — tracks spawned asteroids
+- **Key Methods:**
+  - `OnTrigger()` — spawns asteroids in a horizontal band above the player
+  - `Update()` — removes null (destroyed) asteroids from list, calls `MarkCompleted()` when empty
+
+### `EncounterSpawner.cs`
+- **Path:** `Assets/Scripts/EncounterSpawner.cs`
+- **Base:** `MonoBehaviour`
+- **Purpose:** Creates encounters programmatically, positions their HUD markers, and registers them with GameManager.
+- **Key Fields:**
+  - `_asteroidFieldPrefab` (`GameObject`) — prefab reference for AsteroidFieldEncounter
+- **Key Methods:**
+  - `GenerateStageEncounters()` — called by GameManager.Start(), spawns the stage's encounters
+  - `SpawnAsteroidField(float triggerPoint)` — instantiates prefab, sets triggerPoint, creates marker via DistanceBar, registers with GameManager
+- **Relationships:** Uses `GameManager.Instance`, `DistanceBar`
 
 ### `DistanceBar.cs`
 - **Path:** `Assets/Scripts/DistanceBar.cs`
 - **Base:** `MonoBehaviour`
-- **Purpose:** UI progress bar representing stage completion. The bar fills vertically (top-to-bottom) and a ship icon moves along it.
+- **Purpose:** UI progress bar representing stage completion. The bar fills vertically (top-to-bottom) and a ship icon moves along it. Positions encounter HUD markers at runtime.
 - **Key Fields:**
   - `percent` (`float`) — normalised progress [0, 1]
   - `_blankBackBar` (`RectTransform`) — full-height background bar
   - `_travelledBar` (`RectTransform`) — filled portion of the bar
   - `_shipIcon` (`RectTransform`) — icon that slides along the bar
+  - `_encounterMarkerSprite` (`Sprite`) — optional custom sprite for encounter markers
 - **Key Methods:**
   - `progressBar(timeFactor, timeSinceStageStart, totalStageDuration)` — calculates `percent` and calls `updateVisual()`
   - `updateVisual()` — positions `_shipIcon` and resizes `_travelledBar` based on `percent`
-- **Relationships:** Called by `GameManager` each frame
+  - `PositionEncounterMarker(Encounter)` — creates a HUD marker GameObject with Image, positions by `triggerPoint`, assigns `_hudIconTexture` if provided, assigns icon to encounter
+  - `GenerateMarkerSprite()` — creates a white circle sprite as fallback
+
+### `Bullet.cs`
+- **Path:** `Assets/Scripts/Bullet.cs`
+- **Base:** `MonoBehaviour`
+- **Purpose:** Projectile behaviour — auto-destructs after lifetime expires, damages asteroids on collision.
+- **Key Fields:**
+  - `lifetime` (`float`) — seconds before the bullet is destroyed (default 10)
+  - `damage` (`float`) — damage dealt to asteroids on hit (default 10)
+- **Key Methods:**
+  - `Update()` — decrements `lifetime` by `Δtime`, destroys the GameObject when ≤ 0
+  - `OnTriggerEnter2D(Collider2D)` — damages `Asteroid` on "Hazard" tag, destroys self
+- **Relationships:** Instantiated by `ModGatling`, damages `Asteroid`
+
+### `Asteroid.cs`
+- **Path:** `Assets/Scripts/Asteroid.cs`
+- **Base:** `MonoBehaviour`
+- **Purpose:** Enemy asteroid — floats downward with drift and spin. Destroys itself when below camera view.
+- **Key Fields:**
+  - `speed`, `driftAmount`, `spinSpeed` (`float`) — movement parameters
+  - `health` (`float`) — hit points (default 20)
+- **Key Methods:**
+  - `Start()` — initialises Rigidbody2D velocity and angular velocity
+  - `Update()` — destroys self if below camera bottom edge
+  - `TakeDamage(float)` — reduces health, destroys on zero
+- **Relationships:** Spawned by `AsteroidFieldEncounter`, damaged by `Bullet`
 
 ### `Player.cs`
 - **Path:** `Assets/Scripts/Player.cs`
@@ -149,17 +250,17 @@ Roguelike_Ship/
 ### `ModGatling.cs`
 - **Path:** `Assets/Scripts/Ship Modules/ModGatling.cs`
 - **Base:** `ShipModule`
-- **Purpose:** Player-controlled gatling turret. Rotates to face the mouse cursor and fires bullets on left click.
+- **Purpose:** Player-controlled gatling turret. Rotates smoothly toward the mouse cursor at `rotationSpeed` and fires bullets on left click. Bullets fire from the barrel's actual direction (`transform.up`).
 - **Key Fields:**
   - `_turret` (`GameObject`) — the turret assembly (rotated to aim)
   - `_bulletSpawnPoint` (`GameObject`) — muzzle position where bullets spawn
   - `_projectiles` (`GameObject`) — parent transform for spawned bullets
   - `_bulletPrefab` (`GameObject`) — `Bullet.prefab` reference
-  - `rotationSpeed` (`float`) — unused (rotation is instantaneous via `AngleAxis`)
+  - `rotationSpeed` (`float`) — turret rotation speed in degrees/second
   - `fireRate` (`float`) — cooldown between shots in seconds
   - `cooldown` (`float`, private) — current cooldown countdown
 - **Key Methods:**
-  - `Update()` — aims turret at mouse cursor; fires when left mouse button is held and cooldown is 0
+  - `Update()` — aims turret at mouse cursor via `Quaternion.RotateTowards`, fires on left click
 - **Relationships:** Instantiates `Bullet.prefab`; parent class is `ShipModule`
 
 ---
@@ -168,11 +269,12 @@ Roguelike_Ship/
 
 The main (and only) scene. Contains:
 
-- **GameManager** GameObject — hosts `GameManager.cs` and `DistanceBar.cs` scripts
+- **GameManager** GameObject — hosts `GameManager.cs`, `TimeController`, `DistanceBar` components
+  - **Encounters** child — hosts `EncounterSpawner` component
 - **PlayerShip** — root GameObject for the player. Has no SpriteRenderer; visuals come from child modules. Components: `Rigidbody2D`, `CompositeCollider2D`, `Player.cs`
-- **Canvas / UI** — distance bar elements (`_blankBackBar`, `_travelledBar`, `_shipIcon`) as `RectTransform` children
+- **Canvas / HUD** — distance bar elements (`_blankBackBar`, `_travelledBar`, `_shipIcon`) as RectTransform children, plus time control buttons (Pause/Play/Fast)
 
-No enemies, asteroids, or stage spawners are present yet. The stage timer runs but nothing spawns.
+Encounters are spawned programmatically by `EncounterSpawner` at stage start. HUD markers for each encounter are created at runtime by `DistanceBar.PositionEncounterMarker()`.
 
 ---
 
@@ -181,8 +283,12 @@ No enemies, asteroids, or stage spawners are present yet. The stage timer runs b
 | Prefab | Components | Used By |
 |---|---|---|
 | `Assets/Prefab/Bullet.prefab` | `SpriteRenderer` (bullet.png), `Rigidbody2D`, `Bullet` script | Spawned by `ModGatling.Fire()` |
+| `Assets/Prefab/Asteroid.prefab` | `SpriteRenderer` (Asteroid.png), `Rigidbody2D`, `Asteroid` script | Spawned by `AsteroidFieldEncounter` |
+| `Assets/Prefab/Encounters/AsteroidFieldEncounter.prefab` | `AsteroidFieldEncounter` script | Instantiated by `EncounterSpawner` |
 
-The prefab has `_lifetime = 10` seconds, `Rigidbody2D` with `Dynamic` body type, scale `(0.2, 0.2)`, and uses the `bullet.png` sprite.
+Bullet prefab: `lifetime = 10`, `damage = 10`, `Rigidbody2D` with `Dynamic` body type, scale `(0.2, 0.2)`.
+
+Asteroid prefab: `speed = 2`, `driftAmount = 0.5`, `spinSpeed = 30`, `health = 20`.
 
 ---
 
@@ -190,8 +296,11 @@ The prefab has `_lifetime = 10` seconds, `Rigidbody2D` with `Dynamic` body type,
 
 - **`ShipModule.cs`** — empty base class. No virtual methods, no shared module interface. `ModGatling` inherits from it but adds its own fields entirely.
 - **No enemy/AI system** — no spawner, no enemy behaviour, no collision/damage.
-- **`rotationSpeed`** in `ModGatling` is declared but never used (turret snaps instantly).
-- **`DistanceBar.updateVisual()`** calls `SetLocalPositionAndRotation` and `sizeDelta` — the position math uses `_shipIcon.rect.position.x` which is in local space; the bar position logic may contain off-by-one issues (references `_blankBackBar.rect.height` multiple times with hardcoded `-1.5f` offset).
+- **No ship systems / power budget** — weapons/shields/engines/sensors not yet toggleable.
+- **No warning system** — no visual/audio cue before encounter triggers.
+- **No boss fights** — no boss encounter type, no stage completion logic.
+- **No roguelike upgrades** — no mid-run upgrade choices after encounters.
+- **`DistanceBar.updateVisual()`** — position math may contain off-by-one issues (references `_blankBackBar.rect.height` with hardcoded `-1.5f` offset).
 - **`GameManager`** has no stage lifecycle — stage runs immediately, no start/end events, no win/lose condition.
 - **No Input Action Map integration** — `InputSystem_Actions.inputactions` asset exists but scripts use legacy `Input.mousePosition` / `Input.GetMouseButton()` directly.
 
