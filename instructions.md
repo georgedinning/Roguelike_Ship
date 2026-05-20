@@ -156,3 +156,11 @@ The prefab has `_lifetime = 10` seconds, `Rigidbody2D` with `Dynamic` body type,
 - **`DistanceBar.updateVisual()`** calls `SetLocalPositionAndRotation` and `sizeDelta` — the position math uses `_shipIcon.rect.position.x` which is in local space; the bar position logic may contain off-by-one issues (references `_blankBackBar.rect.height` multiple times with hardcoded `-1.5f` offset).
 - **`GameManager`** has no stage lifecycle — stage runs immediately, no start/end events, no win/lose condition.
 - **No Input Action Map integration** — `InputSystem_Actions.inputactions` asset exists but scripts use legacy `Input.mousePosition` / `Input.GetMouseButton()` directly.
+
+---
+
+## Agent Coordination
+
+- **Build agent must not push to GitHub.** The build agent implements code changes only. Pushing requires the github agent to review, stage, and commit.
+- The github agent is the sole gate for all git operations (add, commit, push, PRs).
+- If the build agent produces changes that need committing, it should report back what was done so the github agent can handle the commit.
