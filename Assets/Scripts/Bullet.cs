@@ -19,4 +19,13 @@ public class Bullet : MonoBehaviour
             Destroy(transform.gameObject);
         }
     }
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.TryGetComponent<Asteroid>(out var asteroid))
+        {
+            asteroid.TakeDamage(10);
+            Destroy(gameObject);
+        }
+    }
 }
