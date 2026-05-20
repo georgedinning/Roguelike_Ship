@@ -7,21 +7,13 @@ public class Asteroid : MonoBehaviour
     public float spinSpeed = 30f;
     public float health = 30f;
 
-    private Vector2 driftOffset;
-    private float startX;
+    private Rigidbody2D rb;
 
     void Start()
     {
-        startX = transform.position.x;
-        driftOffset = new Vector2(Random.Range(-1f, 1f), 0);
-    }
-
-    void Update()
-    {
-        transform.Translate(Vector2.down * speed * Time.deltaTime);
-        float drift = Mathf.Sin(Time.time + driftOffset.x) * driftAmount * Time.deltaTime;
-        transform.Translate(Vector2.right * drift);
-        transform.Rotate(0, 0, spinSpeed * Time.deltaTime);
+        rb = GetComponent<Rigidbody2D>();
+        rb.velocity = new Vector2(Random.Range(-driftAmount, driftAmount), -speed);
+        rb.angularVelocity = Random.Range(-spinSpeed, spinSpeed);
     }
 
     public void TakeDamage(float amount)

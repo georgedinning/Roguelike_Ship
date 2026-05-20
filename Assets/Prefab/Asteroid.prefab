@@ -117,8 +117,8 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
---- !u!197 &1000000005
-PolygonCollider2D:
+--- !u!58 &1000000005
+CircleCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -149,15 +149,7 @@ PolygonCollider2D:
   m_IsTrigger: 0
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_PolygonCapacity: 32
-  m_VertexDistance: 0.0001
-  m_OffsetDistance: 0.0001
-  m_EdgeRadius: 0
-  m_PathPadding: 0.01
-  m_Optimize: 1
-  m_AutoTiling: 0
-  m_Points:
-    m_Paths: []
+  m_Radius: 0.3
 --- !u!114 &1000000006
 MonoBehaviour:
   m_ObjectHideFlags: 0
