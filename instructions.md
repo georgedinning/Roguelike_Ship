@@ -74,6 +74,7 @@ Roguelike_Ship/
 │   │   ├── Encounter.cs                  # Abstract encounter base class
 │   │   ├── AsteroidFieldEncounter.cs     # Spawns asteroids on trigger
 │   │   ├── EncounterSpawner.cs           # Programmatic encounter generation
+│   │   ├── TestAsteroidSpawner.cs        # Legacy test spawner (unused, safe to delete)
 │   │   └── Ship Modules/
 │   │       ├── ShipModule.cs             # Base class (empty stub)
 │   │       └── ModGatling.cs             # Mouse-aimed gatling turret
@@ -86,7 +87,16 @@ Roguelike_Ship/
 │   └── manifest.json                     # Package dependencies
 ├── ProjectSettings/                      # Unity project settings assets
 ├── instructions.md                       # This file
+├── game-design.md                        # Design doc
 ```
+
+### Defined Tags
+
+| Tag | Used On |
+|---|---|
+| `Hazard` | Asteroids — damages player on collision, destroyed by bullets |
+| `Enemy` | Reserved for future enemy ships |
+| `PlayerProjectile` | Reserved for future use |
 
 ---
 
