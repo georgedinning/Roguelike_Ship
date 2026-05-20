@@ -12,13 +12,14 @@ public class Asteroid : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
-        rb.velocity = new Vector2(Random.Range(-driftAmount, driftAmount), -speed);
+        rb.linearVelocity = new Vector2(Random.Range(-driftAmount, driftAmount), -speed);
         rb.angularVelocity = Random.Range(-spinSpeed, spinSpeed);
     }
 
     public void TakeDamage(float amount)
     {
         health -= amount;
+        Debug.Log($"Asteroid took {amount} damage, {health} remaining", gameObject);
         if (health <= 0) Destroy(gameObject);
     }
 }

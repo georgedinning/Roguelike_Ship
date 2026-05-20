@@ -41,6 +41,7 @@ public class Player : MonoBehaviour
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
+        Debug.Log($"Player collided with: {collision.gameObject.name} (tag: {collision.gameObject.tag})", collision.gameObject);
         if (collision.gameObject.CompareTag("Hazard"))
             TakeDamage(10);
         else if (collision.gameObject.CompareTag("Enemy"))

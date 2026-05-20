@@ -22,6 +22,7 @@ public class Bullet : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D other)
     {
+        Debug.Log($"Bullet hit: {other.name}", other.gameObject);
         if (other.TryGetComponent<Asteroid>(out var asteroid))
         {
             asteroid.TakeDamage(10);
