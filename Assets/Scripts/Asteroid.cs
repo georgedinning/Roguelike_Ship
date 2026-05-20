@@ -8,12 +8,24 @@ public class Asteroid : MonoBehaviour
     public float health = 20f;
 
     private Rigidbody2D rb;
+    private Camera mainCamera;
 
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         rb.linearVelocity = new Vector2(Random.Range(-driftAmount, driftAmount), -speed);
         rb.angularVelocity = Random.Range(-spinSpeed, spinSpeed);
+        mainCamera = Camera.main;
+    }
+
+    void Update()
+    {
+        if (mainCamera != null)
+        {
+            float bottomEdge = mainCamera.transform.position.y - mainCamera.orthographicSize - 2f;
+            if (transform.position.y < bottomEdge)
+                Destroy(gameObject);
+        }
     }
 
     public void TakeDamage(float amount)
