@@ -43,6 +43,7 @@ Roguelike_Ship/
 │   │   └── SampleScene.unity             # Main game scene
 │   ├── Scripts/
 │   │   ├── GameManager.cs                # Stage timer & distance bar driver
+│   │   ├── Player.cs                     # Player health, collision, death
 │   │   ├── Bullet.cs                     # Projectile lifetime & cleanup
 │   │   ├── DistanceBar.cs                # UI progress bar (top-to-bottom)
 │   │   └── Ship Modules/
@@ -101,6 +102,25 @@ Roguelike_Ship/
   - `updateVisual()` — positions `_shipIcon` and resizes `_travelledBar` based on `percent`
 - **Relationships:** Called by `GameManager` each frame
 
+### `Player.cs`
+- **Path:** `Assets/Scripts/Player.cs`
+- **Base:** `MonoBehaviour`
+- **Purpose:** Central player controller. Manages health, collision damage, and death. Attached to `PlayerShip` GameObject.
+- **Key Fields:**
+  - `maxHealth` (`int`) — maximum health value
+  - `invincibilityTime` (`float`) — seconds of invincibility after taking a hit
+  - `currentHealth` (`int`, private) — current health
+  - `invincibilityTimer` (`float`, private) — countdown for invincibility window
+- **Key Properties:**
+  - `IsInvincible` (`bool`) — true when invincibility timer is active
+- **Key Methods:**
+  - `Start()` — initialises `currentHealth = maxHealth`
+  - `Update()` — decrements invincibility timer
+  - `TakeDamage(amount)` — reduces health, triggers invincibility, calls `OnDeath()` at zero
+  - `OnDeath()` — logs death and disables the GameObject
+  - `OnCollisionEnter2D(Collision2D)` — deals 10 damage on `"Hazard"` tag, 20 on `"Enemy"` tag
+- **Relationships:** Ship GameObject has `Rigidbody2D` + `CompositeCollider2D` + child modules with colliders flagged `Used By Composite`
+
 ### `ShipModule.cs`
 - **Path:** `Assets/Scripts/Ship Modules/ShipModule.cs`
 - **Base:** `MonoBehaviour`
@@ -130,7 +150,7 @@ Roguelike_Ship/
 The main (and only) scene. Contains:
 
 - **GameManager** GameObject — hosts `GameManager.cs` and `DistanceBar.cs` scripts
-- **Player Ship** — `Ship.png` sprite, likely has `ModGatling` component assigned
+- **PlayerShip** — root GameObject for the player. Has no SpriteRenderer; visuals come from child modules. Components: `Rigidbody2D`, `CompositeCollider2D`, `Player.cs`
 - **Canvas / UI** — distance bar elements (`_blankBackBar`, `_travelledBar`, `_shipIcon`) as `RectTransform` children
 
 No enemies, asteroids, or stage spawners are present yet. The stage timer runs but nothing spawns.
@@ -151,7 +171,6 @@ The prefab has `_lifetime = 10` seconds, `Rigidbody2D` with `Dynamic` body type,
 
 - **`ShipModule.cs`** — empty base class. No virtual methods, no shared module interface. `ModGatling` inherits from it but adds its own fields entirely.
 - **No enemy/AI system** — no spawner, no enemy behaviour, no collision/damage.
-- **No health system** — no `PlayerHealth` or `EnemyHealth` classes exist.
 - **`rotationSpeed`** in `ModGatling` is declared but never used (turret snaps instantly).
 - **`DistanceBar.updateVisual()`** calls `SetLocalPositionAndRotation` and `sizeDelta` — the position math uses `_shipIcon.rect.position.x` which is in local space; the bar position logic may contain off-by-one issues (references `_blankBackBar.rect.height` multiple times with hardcoded `-1.5f` offset).
 - **`GameManager`** has no stage lifecycle — stage runs immediately, no start/end events, no win/lose condition.
