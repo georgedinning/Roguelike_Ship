@@ -4,6 +4,25 @@ Top-down 2D ship roguelike built in Unity with URP 2D Render Pipeline. Features 
 
 ---
 
+## Project Layout (Windows + WSL)
+
+This project straddles two environments. Keep these paths in mind when working:
+
+| Environment | Location | Used For |
+|---|---|---|
+| **Windows** | `C:\Users\George\Documents\Roguelike_Ship\` | Unity Editor, scene/prefab editing, asset import |
+| **WSL (Linux)** | `/home/george/Projects/Roguelike_Ship/` | OpenCode AI, bash commands, git operations |
+| **Windows → WSL** | `\\wsl.localhost\Ubuntu-26.04\home\george\Projects\Roguelike_Ship\` | Windows access to WSL files (opencode.json, opencode.bat) |
+| **WSL → Windows** | `/mnt/c/Users/George/Documents/Roguelike_Ship/` | WSL access to Unity project files |
+
+**Rules for the AI agent:**
+- All Unity project files (`.cs`, `.unity`, `.prefab`, assets) live under the **Windows** path, accessed from WSL via `/mnt/c/Users/George/Documents/Roguelike_Ship/Assets/...`.
+- The WSL-only directory `/home/george/Projects/Roguelike_Ship/` contains only `opencode.json` and `opencode.bat`.
+- When searching, editing, or creating scripts, use paths under `/mnt/c/Users/George/Documents/Roguelike_Ship/Assets/`.
+- The `instructions.md` and `game-design.md` files are at the Windows project root, readable from WSL as `/mnt/c/Users/George/Documents/Roguelike_Ship/instructions.md` and `/mnt/c/Users/George/Documents/Roguelike_Ship/game-design.md`.
+
+---
+
 ## Dev Setup
 
 | Requirement | Value |
@@ -175,3 +194,24 @@ The prefab has `_lifetime = 10` seconds, `Rigidbody2D` with `Dynamic` body type,
 - **`DistanceBar.updateVisual()`** calls `SetLocalPositionAndRotation` and `sizeDelta` — the position math uses `_shipIcon.rect.position.x` which is in local space; the bar position logic may contain off-by-one issues (references `_blankBackBar.rect.height` multiple times with hardcoded `-1.5f` offset).
 - **`GameManager`** has no stage lifecycle — stage runs immediately, no start/end events, no win/lose condition.
 - **No Input Action Map integration** — `InputSystem_Actions.inputactions` asset exists but scripts use legacy `Input.mousePosition` / `Input.GetMouseButton()` directly.
+
+---
+
+## Coding Practices
+
+### Naming Conventions
+
+Public fields use underscore prefix (`_`) when they are **object/reference assignments** — GameObjects, Components, Transforms, or other asset references that get dragged into Inspector slots (e.g. `_turret`, `_bulletSpawnPoint`, `_distanceBar`, `_blankBackBar`).
+
+Public fields that are **value sliders or numeric tunables** do not get the underscore prefix (e.g. `rotationSpeed`, `fireRate`, `maxHealth`, `invincibilityTime`).
+
+This makes it immediately clear in the Inspector which fields are wiring references vs. tuning values.
+
+### Public fields in scripts are defaults, not authoritative values
+
+Public fields on `MonoBehaviour` scripts (e.g. `maxHealth`, `count`, `spawnArea`) set **default values only**. The actual values used at runtime come from the **scene** (for GameObjects placed in the world) or **prefab** (for prefab instances). These serialized values should be tuned in the Unity Editor, not hardcoded in `.cs` files.
+
+- **Do** set sensible defaults in code that make a script work out of the box.
+- **Do** adjust values in the Inspector / prefab override for final tuning.
+- **Do not** change public property defaults in `.cs` files as a substitute for editing scene/prefab serialized values.
+- **Exception:** Trivial test scripts that are never tuned in the Editor.

@@ -3,7 +3,6 @@ using UnityEngine;
 public class GameManager : MonoBehaviour
 {
     public DistanceBar _distanceBar;
-    public float timeFactor;
     private float timeSinceStageStart;
     public float totalStageDuration;
 
@@ -15,7 +14,7 @@ public class GameManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        timeSinceStageStart += Time.deltaTime * timeFactor;
-        _distanceBar.progressBar(timeFactor, timeSinceStageStart, totalStageDuration);
+        timeSinceStageStart += Time.deltaTime * TimeController.CurrentTimeScale;
+        _distanceBar.progressBar(TimeController.CurrentTimeScale, timeSinceStageStart, totalStageDuration);
     }
 }

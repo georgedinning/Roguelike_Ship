@@ -2,18 +2,13 @@ using UnityEngine;
 
 public class Bullet : MonoBehaviour
 {
-    public float _lifetime;
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        
-    }
+    public float lifetime = 10f;
+    public float damage = 10f;
 
-    // Update is called once per frame
     void Update()
     {
-        _lifetime-= Time.deltaTime;
-        if (_lifetime <= 0)
+        lifetime -= Time.deltaTime;
+        if (lifetime <= 0)
         {
             this.enabled = false;
             Destroy(transform.gameObject);
@@ -22,10 +17,12 @@ public class Bullet : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        Debug.Log($"Bullet hit: {other.name}", other.gameObject);
-        if (other.TryGetComponent<Asteroid>(out var asteroid))
+        if (other.CompareTag("Hazard"))
         {
-            asteroid.TakeDamage(10);
+            Asteroid asteroid = other.GetComponent<Asteroid>();
+            if (asteroid != null)
+                asteroid.TakeDamage(damage);
+
             Destroy(gameObject);
         }
     }

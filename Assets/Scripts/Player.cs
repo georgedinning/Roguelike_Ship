@@ -3,7 +3,7 @@ using UnityEngine;
 public class Player : MonoBehaviour
 {
     [Header("Health")]
-    public int maxHealth = 100;
+    public int maxHealth = 50;
     private int currentHealth;
 
     [Header("Collision")]
@@ -28,23 +28,26 @@ public class Player : MonoBehaviour
         if (IsInvincible) return;
         currentHealth = Mathf.Max(0, currentHealth - amount);
         invincibilityTimer = invincibilityTime;
+        Debug.Log($"Player took {amount} damage, HP: {currentHealth}");
 
         if (currentHealth <= 0)
             OnDeath();
     }
 
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.gameObject.CompareTag("Hazard"))
+        {
+            Debug.Log($"Player hit by {collision.gameObject.name}");
+            TakeDamage(10);
+            Destroy(collision.gameObject);
+        }
+    }
+
     private void OnDeath()
     {
-        Debug.Log("Player died");
+        Debug.Log("Player destroyed");
         gameObject.SetActive(false);
     }
 
-    private void OnCollisionEnter2D(Collision2D collision)
-    {
-        Debug.Log($"Player collided with: {collision.gameObject.name} (tag: {collision.gameObject.tag})", collision.gameObject);
-        if (collision.gameObject.CompareTag("Hazard"))
-            TakeDamage(10);
-        else if (collision.gameObject.CompareTag("Enemy"))
-            TakeDamage(20);
-    }
 }
