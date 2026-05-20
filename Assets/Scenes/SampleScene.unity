@@ -838,7 +838,7 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
---- !u!61 &1204038832
+--- !u!66 &1204038832
 CompositeCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1410,7 +1410,7 @@ MonoBehaviour:
   _bulletPrefab: {fileID: 5127670244404268756, guid: 8e5140620a99cbd40a36b0c6240a4012, type: 3}
   rotationSpeed: 100
   fireRate: 0.15
---- !u!208 &2001599247
+--- !u!61 &2001599247
 BoxCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
