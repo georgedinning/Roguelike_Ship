@@ -732,6 +732,9 @@ GameObject:
   m_Component:
   - component: {fileID: 1204038830}
   - component: {fileID: 1204038829}
+  - component: {fileID: 1204038831}
+  - component: {fileID: 1204038832}
+  - component: {fileID: 1204038833}
   m_Layer: 0
   m_Name: Ship
   m_TagString: Untagged
@@ -810,6 +813,87 @@ Transform:
   - {fileID: 2001599244}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!50 &1204038831
+Rigidbody2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1204038828}
+  m_Enabled: 1
+  m_Simulated: 1
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 0
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0
+--- !u!61 &1204038832
+CompositeCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1204038828}
+  m_Enabled: 1
+  m_Density: 0
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_UsedByComposite: 0
+  m_PolygonCapacity: 16
+  m_CompositeOperation: 0
+  m_VertexDistance: 0.0001
+  m_OffsetDistance: 0.0001
+  m_EdgeRadius: 0
+  m_PathPadding: 0.01
+  m_Optimize: 1
+  m_GenerationType: 0
+  m_ColliderChildOptimization: 0
+  m_AutoTiling: 0
+--- !u!114 &1204038833
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1204038828}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7b3d2a1e4c56b78a9012c345d678901, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHealth: 100
+  invincibilityTime: 0.5
 --- !u!1 &1269769331
 GameObject:
   m_ObjectHideFlags: 0
@@ -1229,6 +1313,7 @@ GameObject:
   - component: {fileID: 2001599244}
   - component: {fileID: 2001599245}
   - component: {fileID: 2001599246}
+  - component: {fileID: 2001599247}
   m_Layer: 0
   m_Name: Module_Gatling
   m_TagString: Untagged
@@ -1325,6 +1410,40 @@ MonoBehaviour:
   _bulletPrefab: {fileID: 5127670244404268756, guid: 8e5140620a99cbd40a36b0c6240a4012, type: 3}
   rotationSpeed: 100
   fireRate: 0.15
+--- !u!208 &2001599247
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2001599243}
+  m_Enabled: 1
+  m_Density: 0
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_UsedByComposite: 1
+  m_Size: {x: 1.28, y: 1.28}
+  m_Offset: {x: 0, y: 0}
 --- !u!1 &2085816409
 GameObject:
   m_ObjectHideFlags: 0
