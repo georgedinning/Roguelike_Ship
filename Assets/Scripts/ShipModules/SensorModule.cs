@@ -9,7 +9,10 @@ public class SensorModule : ShipModule
     private void Start()
     {
         if (FogManager.Instance != null)
+        {
             FogManager.Instance.RegisterSensor(this);
+            FogManager.Instance.RecalculateRadii();
+        }
     }
 
     private void OnDestroy()
@@ -25,5 +28,9 @@ public class SensorModule : ShipModule
         Color target = powered ? Color.white : new Color(0.35f, 0.35f, 0.35f);
         foreach (SpriteRenderer sr in sprites)
             sr.color = target;
+
+        // Recalculate fog radii since this sensor's power state changed
+        if (FogManager.Instance != null)
+            FogManager.Instance.RecalculateRadii();
     }
 }

@@ -1254,7 +1254,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   powerCost: 1
-  powered: 1
+  powered: 0
   _turret: {fileID: 4766010037104763251}
   _bulletSpawnPoint: {fileID: 6970164569611451178}
   _projectiles: {fileID: 0}

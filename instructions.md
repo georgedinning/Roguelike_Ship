@@ -71,6 +71,7 @@ Roguelike_Ship/
 │   │   ├── GameManager.cs                # Stage timer, encounter list, singleton
 │   │   ├── PlayerShip.cs                 # Player health, collision, power budget, module spawning
 │   │   ├── Bullet.cs                     # Projectile lifetime & cleanup
+│   │   ├── CameraController.cs           # WASD/drag camera, scroll zoom, O-key reset to ship
 │   │   ├── Asteroid.cs                   # Enemy asteroid physics & damage
 │   │   ├── DistanceBar.cs                # UI progress bar, encounter marker positioning
 │   │   ├── TimeController.cs             # Time state management (pause/play/fast)
@@ -234,6 +235,33 @@ Roguelike_Ship/
   - `OnTriggerEnter2D(Collider2D)` — damages `Asteroid` on "Hazard" tag, destroys self
 - **Relationships:** Instantiated by `GatlingGunModule`, damages `Asteroid`
 
+### `CameraController.cs`
+- **Path:** `Assets/Scripts/CameraController.cs`
+- **Base:** `MonoBehaviour`
+- **Purpose:** Free camera controller. WASD + middle-mouse drag for panning, scroll wheel for zoom, O key to lerp back to the ship. Camera position is clamped within configurable bounds.
+- **Key Fields:**
+  - `moveSpeed` (`float`) — WASD movement speed (default 10)
+  - `dragSpeed` (`float`) — middle-mouse drag sensitivity multiplier (default 0.5)
+  - `scrollZoomSpeed` (`float`) — zoom change per scroll notch (default 2)
+  - `minZoom`, `maxZoom` (`float`) — orthographic size range (default 5–50)
+  - `minX`, `maxX`, `minY`, `maxY` (`float`) — camera position clamping bounds
+  - `resetKey` (`KeyCode`) — key to snap camera back to ship (default `O`)
+  - `resetLerpDuration` (`float`) — duration of lerp on reset (default 0.2s)
+- **Key Fields:**
+  - `moveSpeed` (`float`) — WASD movement speed (default 10); scaled by `orthographicSize / minZoom` so movement is faster when zoomed out
+  - `dragSpeed` (`float`) — middle-mouse drag sensitivity multiplier (default 0.5)
+  - `scrollZoomSpeed` (`float`) — zoom change per scroll notch (default 2); scaled by `orthographicSize / minZoom` so zoom is faster when zoomed out
+  - `minZoom`, `maxZoom` (`float`) — orthographic size range (default 5–50)
+  - `minX`, `maxX`, `minY`, `maxY` (`float`) — camera position clamping bounds
+  - `resetKey` (`KeyCode`) — key to snap camera back to ship (default `O`)
+  - `resetLerpDuration` (`float`) — duration of lerp on reset (default 0.2s)
+- **Key Methods:**
+  - `Start()` — finds ship transform by `"Player"` tag, caches camera component
+  - `Update()` — handles WASD input (speed scaled by zoom), middle-mouse drag, scroll zoom (speed scaled by zoom); on reset key, lerps from current position to ship position with smoothstep easing; clamps final position
+  - `SetPositionImmediate(Vector3)` — sets camera position programmatically
+  - `SetZoomImmediate(float)` — sets orthographic size programmatically
+- **Relationships:** Attached to Main Camera; uses `GameObject.FindWithTag("Player")` to locate the ship
+
 ### `PowerBar.cs`
 - **Path:** `Assets/Scripts/PowerBar.cs`
 - **Base:** `MonoBehaviour`
@@ -278,7 +306,7 @@ Roguelike_Ship/
 ### `PlayerShip.cs`
 - **Path:** `Assets/Scripts/PlayerShip.cs`
 - **Base:** `MonoBehaviour`
-- **Purpose:** Central player controller. Singleton. Manages health, collision damage, death, power budget, and module spawning. Attached to the ship root GameObject (tagged `"Player"`). On start, spawns modules in a grid layout defined by grid parameters.
+- **Purpose:** Central player controller. Singleton. Manages health, collision damage, death, power budget, and module spawning. Attached to the ship root GameObject (tagged `"Player"`). On start, spawns modules in a grid layout defined by grid parameters, then greedily powers on modules while budget allows.
 - **Key Fields:**
   - `Instance` (`static PlayerShip`) — singleton accessor
   - `maxHealth` (`int`) — maximum health value
@@ -296,9 +324,9 @@ Roguelike_Ship/
   - `Awake()` — sets singleton Instance
   - `AllocateSlots(int)` — creates the module grid with N slots; call before `Start()` to define grid size
   - `SetModule(int, GameObject)` — assigns a module prefab to a specific slot index
-  - `SpawnModuleAtSlot(int)` — instantiates the prefab in the given slot at its computed grid position, returns the `ShipModule` component
+  - `SpawnModuleAtSlot(int, bool rebuildCollider = true)` — instantiates the prefab at computed grid position; optionally refreshes CompositeCollider2D (pass `false` for batch spawns)
   - `RefreshHullCollider()` — disables and re-enables the `CompositeCollider2D` to rebuild geometry from current child colliders
-  - `Start()` — initialises `currentHealth = maxHealth`, allocates a 5×5 grid, fills the middle row (row 2) with `_gatlingGunPrefab`, iterates `moduleSlots` calling `SpawnModuleAtSlot(i)`, calls `RefreshHullCollider()`, then `powerBar.RecalculateFromModules()`
+  - `Start()` — initialises `currentHealth = maxHealth`, allocates grid, fills middle row with `_gatlingGunPrefab`, spawns all modules with `rebuildCollider: false`, calls `RefreshHullCollider()` once, then greedily powers on modules via `HasAvailablePower`/`IncreaseUsage`/`SetPowered` (grid-order priority), finally syncs `FogManager.RecalculateRadii()`
   - `Update()` — handles shift+click module toggling via `Physics2D.OverlapPoint`
   - `ToggleModulePower(ShipModule)` — toggles a module: if turning on checks `powerBar.HasAvailablePower()`, updates `powerBar` directly via `IncreaseUsage`/`DecreaseUsage` (no module iteration)
   - `TakeDamage(amount)` — reduces health, calls `OnDeath()` at zero
@@ -312,8 +340,9 @@ Roguelike_Ship/
 - **Purpose:** Base class for all ship modules. Provides the power interface that PlayerShip's power budget system uses.
 - **Key Fields:**
   - `powerCost` (`int`) — power consumed when this module is powered on
-  - `powered` (`bool`) — whether the module is currently active
+  - `powered` (`bool`) — whether the module is currently active (default `false`)
 - **Key Methods:**
+  - `Awake()` — calls `OnPowerStateChanged()` so visual state matches `powered` immediately on instantiation
   - `SetPowered(bool)` — sets powered state, fires `OnPowerChanged` event if state changed
 - **Events:**
   - `OnPowerChanged` (`System.Action`) — fired when `powered` changes, used by PlayerShip/UI for power bar sync
@@ -352,15 +381,15 @@ Roguelike_Ship/
   - `fogEndRadius` (`float`) — radius contributed to fog end (where fog is fully opaque, default 30)
   - `radarEndRadius` (`float`) — radius contributed to radar end (where dots/ring/spokes stop, default 50)
 - **Key Methods:**
-  - `Start()` — registers with FogManager
+  - `Start()` — registers with FogManager, calls `FogManager.RecalculateRadii()` to include its radii
   - `OnDestroy()` — unregisters from FogManager
-  - `OnPowerStateChanged()` — tints sprites white/grey based on `powered`
+  - `OnPowerStateChanged()` — tints sprites white/grey based on `powered`, calls `FogManager.RecalculateRadii()` to update stacked radii
 - **Relationships:** Used by `FogManager` for radius stacking; parent class is `ShipModule`
 
 ### `FogManager.cs`
 - **Path:** `Assets/Scripts/Fog/FogManager.cs`
 - **Base:** `MonoBehaviour`
-- **Purpose:** Singleton. Manages the fog of war system: totals sensor radii from all powered `SensorModule` instances, updates the `FogOverlayShader` with ship position and radii each frame, creates and animates the radar ring (green pulsing circle at radar end) and 8 radial spokes (spanning fogStart→radarEnd with alpha fade), and tracks all `FogAffected` entities for per-frame dot visibility.
+- **Purpose:** Singleton. Manages the fog of war system: totals sensor radii from all powered `SensorModule` instances, updates the `FogOverlayShader` with ship position and radii each frame, creates and animates the radar ring (green pulsing circle at radar end) and 8 radial spokes (spanning fogStart→radarEnd with alpha fade), and tracks all `FogAffected` entities for per-frame dot visibility. Hides ring and spokes when `TotalRadarEnd ≤ TotalFogEnd` (no radar buffer zone).
 - **Key Fields:**
   - `Instance` (`static FogManager`) — singleton accessor
   - `_fogOverlay` (`SpriteRenderer`) — the full-screen overlay carrying the fog shader
@@ -372,7 +401,8 @@ Roguelike_Ship/
   - `TotalFogStart`, `TotalFogEnd`, `TotalRadarEnd` (`float`, public) — stacked radii from all powered sensors
 - **Key Methods:**
   - `Start()` — finds ship, caches overlay material, creates radar ring LineRenderer and 8 radial spoke LineRenderers
-  - `Update()` — recalculates radii from active sensors (`UpdateFog`), pushes shader globals (`_ShipPos`, `_FogStart`, `_FogEnd`), animates ring pulse + spoke alpha gradient (transparent at fogStart, opaque at fogEnd→radarEnd), updates entity dot visibility
+  - `Update()` — pushes shader globals (`_ShipPos`, `_FogStart`, `_FogEnd`), animates ring pulse + spoke alpha gradient (transparent at fogStart, opaque at fogEnd→radarEnd), updates entity dot visibility; hides radar visuals when `radarEnd ≤ fogEnd`
+  - `RecalculateRadii()` — public; sums radii from all powered `SensorModule` instances (called on-demand by SensorModule and PlayerShip, not per-frame)
   - `RegisterSensor(SensorModule)` / `UnregisterSensor(SensorModule)` — sensor lifecycle
   - `RegisterEntity(FogAffected)` / `UnregisterEntity(FogAffected)` — entity lifecycle
 - **Relationships:** Depends on `SensorModule` for radii, `FogAffected` for entity dots, `FogOverlayShader` for visual masking
@@ -423,7 +453,7 @@ Asteroid prefab: `speed = 1.5`, `driftAmount = 0.7`, `spinSpeed = 30`, `health =
 
 ## Known Gaps
 
-- **`ShipModule.cs`** — minimal base class with power fields only; no shared module interface beyond power.
+- **CameraController drag is screen-pixel-based, not world-space** — middle-mouse drag delta is in screen pixels, converted to world units via `2f * orthographicSize / pixelHeight`. This makes drag feel inconsistent when the camera is rotated or during a reset lerp. Should use world-space drag tracking (drag target position in world space, not mouse delta).
 - **No enemy/AI system** — no spawner, no enemy behaviour, no collision/damage.
 - **No shields/engines systems** — only weapons (GatlingGunModule) and sensors (SensorModule) wired up; shields and engines exist as stubs in the design doc but have no modules yet.
 - **No warning system** — no visual/audio cue before encounter triggers.

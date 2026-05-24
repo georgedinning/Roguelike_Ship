@@ -357,14 +357,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _fogOverlay: {fileID: 363801461}
   ringColor: {r: 0, g: 1, b: 0, a: 1}
-  sweepColor: {r: 0, g: 0.27430224, b: 1, a: 1}
   ringPulseSpeed: 2
-  sweepRotationSpeed: 90
   ringWidth: 0.2
-  sweepWidth: 0.1
+  spokeWidth: 0.02
   circleSegments: 64
-  baseInnerRadius: 2
-  baseOuterRadius: 16
+  baseFogStart: 24
+  baseFogEnd: 26
+  baseRadarEnd: 26
 --- !u!1 &363801460
 GameObject:
   m_ObjectHideFlags: 0
@@ -447,7 +446,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 10}
-  m_LocalScale: {x: 100, y: 100, z: 1}
+  m_LocalScale: {x: 300, y: 300, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 519420032}
@@ -623,6 +622,7 @@ GameObject:
   - component: {fileID: 519420031}
   - component: {fileID: 519420029}
   - component: {fileID: 519420030}
+  - component: {fileID: 519420033}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -749,6 +749,29 @@ Transform:
   - {fileID: 363801462}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &519420033
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 519420028}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c366760131e51d4ca329160dd4bbcf3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  moveSpeed: 10
+  dragSpeed: 0.5
+  scrollZoomSpeed: 2
+  minZoom: 5
+  maxZoom: 50
+  minX: -50
+  maxX: 50
+  minY: -50
+  maxY: 50
+  resetKey: 111
+  resetLerpDuration: 0.2
 --- !u!1 &579875530
 GameObject:
   m_ObjectHideFlags: 0

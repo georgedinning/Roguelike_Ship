@@ -15,7 +15,7 @@ public class FogManager : MonoBehaviour
     [Range(0.01f, 0.5f)]
     public float ringWidth = 0.015f;
     [Range(0.01f, 0.3f)]
-    public float spokeWidth = 0.02f;
+    public float spokeWidth = 0.01f;
     public int circleSegments = 64;
 
     [Header("Base Fog (no sensors)")]
@@ -108,16 +108,15 @@ public class FogManager : MonoBehaviour
         // Gradient for spoke alpha fading (stream — set each frame in Update)
         spokeGradient = new Gradient();
 
-        // Initial radii update
-        UpdateFog();
+        // Initial radii (sensors haven't registered yet — base values only)
+        TotalFogStart = baseFogStart;
+        TotalFogEnd = baseFogEnd;
+        TotalRadarEnd = baseRadarEnd;
     }
 
     private void Update()
     {
-        // 1. Recalculate total radii from powered sensors
-        UpdateFog();
-
-        // 2. Push radii to shader
+        // 1. Push radii to shader
         if (overlayReady)
         {
             overlayMaterial.SetVector(ShipPosId,
@@ -127,8 +126,17 @@ public class FogManager : MonoBehaviour
         }
 
         // 3. Update radar visuals (ring + spokes, all pulse together)
-        if (ringLine != null && shipTransform != null)
+        if (ringLine != null && spokes != null && shipTransform != null)
         {
+            // Hide radar when there's no radar buffer zone
+            bool hasRadarSpace = TotalRadarEnd > TotalFogEnd + 0.001f;
+            ringLine.enabled = hasRadarSpace;
+            for (int i = 0; i < spokes.Length; i++)
+                spokes[i].enabled = hasRadarSpace;
+
+            if (!hasRadarSpace)
+                return;
+
             float pulseAlpha = 0.3f + 0.7f * (0.5f + 0.5f * Mathf.Sin(Time.time * ringPulseSpeed * Mathf.PI * 2f));
             Color pulseColor = new Color(ringColor.r, ringColor.g, ringColor.b, pulseAlpha);
             ringLine.material.color = pulseColor;
@@ -148,7 +156,7 @@ public class FogManager : MonoBehaviour
             // Update spokes: transparent at fogStart, opaque at fogEnd → radarEnd
             float fogStart = Mathf.Max(TotalFogStart, 0.1f);
             float fogEnd = Mathf.Max(TotalFogEnd, fogStart + 0.1f);
-            float radarEnd = Mathf.Max(TotalRadarEnd, fogEnd + 0.1f);
+            float radarEnd = TotalRadarEnd;
             float fadeDuration = fogEnd - fogStart;
             float innerT = fadeDuration > 0.001f
                 ? (fogEnd - fogStart) / (radarEnd - fogStart)
@@ -221,7 +229,7 @@ public class FogManager : MonoBehaviour
         registeredEntities.Remove(entity);
     }
 
-    private void UpdateFog()
+    public void RecalculateRadii()
     {
         float fogStart = baseFogStart;
         float fogEnd = baseFogEnd;

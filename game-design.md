@@ -53,17 +53,18 @@ The player has command over time and ship systems, enabling tactical play rather
 - **Affects:** All gameplay — physics, cooldowns, stage timer, bullet lifetime, turret rotation.
 - *(Future: Slow-mo button as a limited resource)*
 
-### Ship Systems *(Not yet implemented)*
+### Ship Systems *(Partly implemented)*
 The ship has several systems that can be toggled on or off. Each consumes from a limited **power budget**.
 
+**Implemented:**
+- **Power Budget System** — `PowerBar` tracks capacity/usage, `PlayerShip` greedily powers on modules at start, shift+click toggles individual modules. Weapons (GatlingGunModule) and Sensors (SensorModule) wired up.
+- **Sensors** — toggleable on/off via power budget. Each powered sensor contributes `fogStartRadius`, `fogEndRadius`, `radarEndRadius` to the fog of war system. Multiple sensors stack additively.
+
+**Not yet implemented:**
 | System | Power | Effect When On |
 |---|---|---|
-| Weapons | 2 | Turrets can fire |
 | Shields | 2 | Absorbs incoming damage, regenerates slowly |
 | Engines | 1 | Ship can move |
-| Sensors | 1 | Reveals encounter warning details, enemy info |
-
-The player must make trade-offs: power down shields for more weapon uptime, divert power to engines to outrun a threat, etc.
 
 *(System list is extensible — more systems can be added later.)*
 
@@ -114,14 +115,19 @@ There is no persistent currency or meta-progression. All upgrades are earned dur
 ## 7. Controls
 
 | Input | Action |
-|---|---|
+|---|---|---|
 | Mouse move | Aim turret |
 | Left mouse (hold) | Fire weapons |
+| Shift + Left click | Toggle module power under cursor |
 | Space | Pause / unpause time |
+| WASD | Pan camera |
+| Middle mouse drag | Pan camera (screen-pixel drag) |
+| Scroll wheel | Zoom in/out |
+| O | Reset camera to ship |
 | 1–5 keys | Toggle ship systems on/off (future) |
 | *(Future)* | Active ability keybinds |
 
-The ship is stationary and does not use WASD/arrow movement. All tactical depth comes from time controls, power management, and active abilities.
+The ship is stationary and does not use WASD/arrow movement. All tactical depth comes from time controls, power management, and active abilities. Camera controls are free-form (not ship-following).
 
 ---
 
@@ -149,12 +155,21 @@ The ship is stationary and does not use WASD/arrow movement. All tactical depth 
 - `EncounterSpawner` programmatically creates encounters with trigger points.
 - `Asteroid` with physics, damage, off-screen cleanup.
 - `Player` health, collision damage, invincibility frames, death.
+- `ShipModule` base class with `powered`, `powerCost`, `SetPowered()`, `OnPowerChanged`, `OnPowerStateChanged()`.
+- `PowerBar` with capacity/usage tracking, segment display, `HasAvailablePower`.
+- `GatlingGunModule` with magazine/reload, shift-click toggling, power gating, visual tint.
+- `SensorModule` with `fogStartRadius`/`fogEndRadius`/`radarEndRadius`, additively stacks via `FogManager`.
+- `FogManager` with per-frame shader param push, radar ring + 8 spokes, entity dot tracking.
+- `FogAffected` on entities auto-creates dot on FogDots layer, shows when `fogEnd < distance ≤ radarEnd`.
+- `FogOverlayShader` — URP unlit shader with radial alpha from `_FogStart`/`_FogEnd`.
+- `CameraController` — free camera with WASD/drag/zoom/O-reset, zoom-scaled speeds.
+- Power budget system — modules start `powered=false`, `PlayerShip` greedily powers on in grid order, shift+click toggles.
 
 ### Known Gaps (from instructions.md)
-- `ShipModule.cs` is an empty stub.
+- CameraController uses screen-pixel drag (not world-space), feels inconsistent.
 - No enemy/AI system (chasers, turrets, bombers).
 - No boss fights.
-- No ship systems / power budget management.
+- No shields or engines modules.
 - No warning system before encounter triggers.
 - No roguelike upgrade system.
 - No stage lifecycle (start/end events, multi-stage progression).

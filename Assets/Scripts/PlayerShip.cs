@@ -72,7 +72,8 @@ public class PlayerShip : MonoBehaviour
     /// Spawn the module in the given slot and return its ShipModule component.
     /// Slot must have a prefab assigned. Position is computed from the grid layout.
     /// </summary>
-    public ShipModule SpawnModuleAtSlot(int slotIndex)
+    /// <param name="rebuildCollider">If true, calls RefreshHullCollider() after spawning.</param>
+    public ShipModule SpawnModuleAtSlot(int slotIndex, bool rebuildCollider = true)
     {
         if (moduleSlots == null || slotIndex < 0 || slotIndex >= moduleSlots.Length)
             return null;
@@ -92,6 +93,10 @@ public class PlayerShip : MonoBehaviour
         go.transform.localPosition = localPos;
         go.transform.localRotation = Quaternion.identity;
         slot.spawnedModule = go.GetComponent<ShipModule>();
+
+        if (rebuildCollider)
+            RefreshHullCollider();
+
         return slot.spawnedModule;
     }
 
@@ -134,15 +139,29 @@ public class PlayerShip : MonoBehaviour
             SetModule(slotIndex, _gatlingGunPrefab);
         }
 
-        // Spawn all modules and refresh the composite hull collider
-        ShipModule[] spawnedModules = new ShipModule[moduleSlots.Length];
+        // Spawn all modules (don't rebuild composite on each spawn — do it once after)
         for (int i = 0; i < moduleSlots.Length; i++)
-            spawnedModules[i] = SpawnModuleAtSlot(i);
+            SpawnModuleAtSlot(i, rebuildCollider: false);
 
         RefreshHullCollider();
 
+        // Power on modules greedily as long as budget allows
         if (powerBar != null)
-            powerBar.RecalculateFromModules(spawnedModules);
+        {
+            for (int i = 0; i < moduleSlots.Length; i++)
+            {
+                ShipModule m = moduleSlots[i].spawnedModule;
+                if (m != null && powerBar.HasAvailablePower(m.powerCost))
+                {
+                    powerBar.IncreaseUsage(m.powerCost);
+                    m.SetPowered(true);
+                }
+            }
+        }
+
+        // Sync fog radii now that sensor modules may have been powered on
+        if (FogManager.Instance != null)
+            FogManager.Instance.RecalculateRadii();
     }
 
     void Update()
