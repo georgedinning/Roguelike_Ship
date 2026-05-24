@@ -8,6 +8,8 @@ public abstract class Encounter : MonoBehaviour
 
     public Image _hudIconImage { get; private set; }
 
+    public bool IsActive { get; private set; }
+
     public void AssignIconImage(Image image)
     {
         _hudIconImage = image;
@@ -15,12 +17,14 @@ public abstract class Encounter : MonoBehaviour
 
     public void Fire()
     {
+        IsActive = true;
         SetIconColor(Color.red);
         OnTrigger();
     }
 
     public void MarkCompleted()
     {
+        IsActive = false;
         SetIconColor(new Color(0.7f, 0.7f, 0.7f));
         enabled = false;
     }

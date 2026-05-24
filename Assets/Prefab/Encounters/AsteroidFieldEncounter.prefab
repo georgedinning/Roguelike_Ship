@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &1800881493058941921
+--- !u!1 &8330129096094344331
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,8 +8,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 7943518900973074455}
-  - component: {fileID: 9200389722698217690}
+  - component: {fileID: 5677210880351067783}
+  - component: {fileID: 5292120583154084664}
   m_Layer: 0
   m_Name: AsteroidFieldEncounter
   m_TagString: Untagged
@@ -17,28 +17,28 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &7943518900973074455
+--- !u!4 &5677210880351067783
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1800881493058941921}
+  m_GameObject: {fileID: 8330129096094344331}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 35, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &9200389722698217690
+--- !u!114 &5292120583154084664
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1800881493058941921}
+  m_GameObject: {fileID: 8330129096094344331}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4f00587946d13ef4db7bd9cae17c0685, type: 3}
@@ -48,4 +48,4 @@ MonoBehaviour:
   _hudIconTexture: {fileID: 2800000, guid: baa2a00b16840704bbc1fa8cd1238140, type: 3}
   _asteroidPrefab: {fileID: 1000000001, guid: 8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c, type: 3}
   count: 30
-  spawnArea: {x: 5, y: 60}
+  spawnArea: {x: 0, y: 35}

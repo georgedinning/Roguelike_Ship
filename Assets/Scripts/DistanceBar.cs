@@ -12,6 +12,8 @@ public class DistanceBar : MonoBehaviour
 
     public Sprite _encounterMarkerSprite;
 
+    public bool waitForEncounterCompletion = false;
+
     void Start()
     {
 

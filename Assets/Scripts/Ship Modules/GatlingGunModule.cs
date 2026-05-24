@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class ModGatling : ShipModule
+public class GatlingGunModule : ShipModule
 {
     public GameObject _turret, _bulletSpawnPoint, _projectiles, _bulletPrefab;
     public float rotationSpeed;
@@ -8,16 +8,14 @@ public class ModGatling : ShipModule
     public float fireRate;
     private float cooldown;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    void Awake()
     {
-
+        powerCost = 2;
     }
 
-    // Update is called once per frame
     void Update()
     {
-        //Point at cursor
+        //Point at cursor (aiming works regardless of power)
         Vector2 mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         Vector2 direction = (mousePosition - new Vector2( _turret.transform.position.x, _turret.transform.position.y) );
 
@@ -27,24 +25,22 @@ public class ModGatling : ShipModule
         _turret.transform.rotation = Quaternion.RotateTowards(
             _turret.transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
 
+        if (!powered) return;
+
         if (cooldown > 0)
         {
             cooldown = Mathf.Max(0, cooldown - Time.deltaTime);
         }
         if (Input.GetMouseButton(0))
         {
-            //Try fire
             if (cooldown == 0)
             {
-                //Fire bullet
                 GameObject bullet = GameObject.Instantiate(_bulletPrefab);
                 bullet.transform.position = _bulletSpawnPoint.transform.position;
                 bullet.transform.parent = _projectiles.transform;
-                bullet.GetComponent<Rigidbody2D>().AddForce(_turret.transform.up * 1000f);
+                bullet.GetComponent<Rigidbody2D>().AddForce(_turret.transform.up * 750f);
                 cooldown = fireRate;
             }
         }
-        
-
     }
 }

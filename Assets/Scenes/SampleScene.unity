@@ -376,9 +376,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _distanceBar: {fileID: 341943218}
-  encounters:
-  - {fileID: 660285741}
-  - {fileID: 1937072085}
+  _encounterSpawner: {fileID: 2127227776}
+  encounters: []
   totalStageDuration: 60
 --- !u!4 &341943216
 Transform:
@@ -429,6 +428,7 @@ MonoBehaviour:
   _travelledBar: {fileID: 2085816410}
   _shipIcon: {fileID: 755966821}
   _encounterMarkerSprite: {fileID: 0}
+  waitForEncounterCompletion: 1
 --- !u!1 &405013998
 GameObject:
   m_ObjectHideFlags: 0
@@ -694,7 +694,7 @@ Camera:
   far clip plane: 1000
   field of view: 34
   orthographic: 1
-  orthographic size: 5
+  orthographic size: 20
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -719,7 +719,7 @@ Transform:
   m_GameObject: {fileID: 519420028}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -10}
+  m_LocalPosition: {x: 0, y: 10, z: -10}
   m_LocalScale: {x: 0, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -809,55 +809,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &660285739
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 660285740}
-  - component: {fileID: 660285741}
-  m_Layer: 0
-  m_Name: AsteroidField_01
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &660285740
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 660285739}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2127227775}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &660285741
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 660285739}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4f00587946d13ef4db7bd9cae17c0685, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  triggerPoint: 0.3
-  _hudIcon: {fileID: 0}
-  _asteroidPrefab: {fileID: 1000000001, guid: 8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c, type: 3}
-  count: 30
-  spawnArea: {x: 5, y: 60}
 --- !u!1 &672927016
 GameObject:
   m_ObjectHideFlags: 0
@@ -1085,6 +1036,74 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1429273203}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1012733117
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1012733118}
+  - component: {fileID: 1012733120}
+  - component: {fileID: 1012733119}
+  m_Layer: 5
+  m_Name: Power_Bar
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1012733118
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1012733117}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1887914708}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 432.9, y: -261}
+  m_SizeDelta: {x: 300.6425, y: 48.787}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1012733119
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1012733117}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 02f3762070ffdd54f880f26f66ee022d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _powerBar: {fileID: 1012733120}
+--- !u!114 &1012733120
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1012733117}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7be31b685d79e4c4a9c8328c71303cbe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  capacity: 6
+  _segmentPrefab: {fileID: 8582444555765553105, guid: ac2ebbbb68726cf429550f1e2da44aa9, type: 3}
+  _container: {fileID: 1012733118}
+  _spacing: 2
+  _activeSprite: {fileID: 3429523886630012714, guid: 6d8ebac5289696943ae48905aec13845, type: 3}
+  _inactiveSprite: {fileID: -618619975744696277, guid: a077d4d55a2f7244d83130689d0aaabe, type: 3}
 --- !u!1 &1204038828
 GameObject:
   m_ObjectHideFlags: 0
@@ -1161,6 +1180,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxHealth: 100
   invincibilityTime: 0.5
+  powerCapacity: 15
+  modules:
+  - {fileID: 2001599246}
 --- !u!61 &1204038834
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -2006,6 +2028,7 @@ RectTransform:
   - {fileID: 1244134511}
   - {fileID: 672927017}
   - {fileID: 457896343}
+  - {fileID: 1012733118}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -2030,55 +2053,6 @@ MonoBehaviour:
   _fastButton: {fileID: 457896344}
   activeColor: {r: 1, g: 1, b: 1, a: 1}
   inactiveColor: {r: 0.6, g: 0.6, b: 0.6, a: 1}
---- !u!1 &1937072084
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1937072086}
-  - component: {fileID: 1937072085}
-  m_Layer: 0
-  m_Name: AsteroidField_02
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1937072085
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1937072084}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4f00587946d13ef4db7bd9cae17c0685, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  triggerPoint: 0.6
-  _hudIcon: {fileID: 0}
-  _asteroidPrefab: {fileID: 1000000001, guid: 8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c, type: 3}
-  count: 30
-  spawnArea: {x: 5, y: 60}
---- !u!4 &1937072086
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1937072084}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2127227775}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2001599243
 GameObject:
   m_ObjectHideFlags: 0
@@ -2180,6 +2154,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7cb3962ab438c634cbdbecf44487dd31, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  powerCost: 1
+  powered: 1
   _turret: {fileID: 1429273202}
   _bulletSpawnPoint: {fileID: 923626043}
   _projectiles: {fileID: 1269769331}
@@ -2270,6 +2246,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2127227775}
+  - component: {fileID: 2127227776}
   m_Layer: 0
   m_Name: Encounters
   m_TagString: Untagged
@@ -2289,11 +2266,22 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 660285740}
-  - {fileID: 1937072086}
+  m_Children: []
   m_Father: {fileID: 341943216}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2127227776
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2127227774}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aeb752cd18d68d74a8d05ff1640911cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _asteroidFieldPrefab: {fileID: 8330129096094344331, guid: 0d0132f3892e58b45847d72f6c811972, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

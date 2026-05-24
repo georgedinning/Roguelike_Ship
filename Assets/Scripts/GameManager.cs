@@ -37,9 +37,25 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
-        timeSinceStageStart += Time.deltaTime * TimeController.CurrentTimeScale;
-        _distanceBar.progressBar(TimeController.CurrentTimeScale, timeSinceStageStart, totalStageDuration);
+        bool blocked = _distanceBar.waitForEncounterCompletion && HasActiveEncounter();
+
+        if (!blocked)
+        {
+            timeSinceStageStart += Time.deltaTime * TimeController.CurrentTimeScale;
+            _distanceBar.progressBar(TimeController.CurrentTimeScale, timeSinceStageStart, totalStageDuration);
+        }
+
         CheckEncounters();
+    }
+
+    private bool HasActiveEncounter()
+    {
+        foreach (var e in encounters)
+        {
+            if (e != null && e.IsActive)
+                return true;
+        }
+        return false;
     }
 
     public void RegisterEncounter(Encounter encounter)
@@ -54,6 +70,14 @@ public class GameManager : MonoBehaviour
                encounters[nextEncounterIndex].triggerPoint <= _distanceBar.percent)
         {
             encounters[nextEncounterIndex].Fire();
+
+            // Clamp progress to exact trigger point when waiting for encounter completion
+            if (_distanceBar.waitForEncounterCompletion)
+            {
+                timeSinceStageStart = encounters[nextEncounterIndex].triggerPoint * totalStageDuration;
+                _distanceBar.progressBar(TimeController.CurrentTimeScale, timeSinceStageStart, totalStageDuration);
+            }
+
             nextEncounterIndex++;
         }
     }

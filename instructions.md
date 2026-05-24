@@ -65,7 +65,7 @@ Roguelike_Ship/
 │   │   └── SampleScene.unity             # Main game scene
 │   ├── Scripts/
 │   │   ├── GameManager.cs                # Stage timer, encounter list, singleton
-│   │   ├── Player.cs                     # Player health, collision, death
+│   │   ├── Player.cs                     # Player health, collision, power budget
 │   │   ├── Bullet.cs                     # Projectile lifetime & cleanup
 │   │   ├── Asteroid.cs                   # Enemy asteroid physics & damage
 │   │   ├── DistanceBar.cs                # UI progress bar, encounter marker positioning
@@ -74,10 +74,12 @@ Roguelike_Ship/
 │   │   ├── Encounter.cs                  # Abstract encounter base class
 │   │   ├── AsteroidFieldEncounter.cs     # Spawns asteroids on trigger
 │   │   ├── EncounterSpawner.cs           # Programmatic encounter generation
+│   │   ├── PowerBar.cs                   # Visual power bar, capacity/usage authority
+│   │   ├── SystemsUI.cs                  # Holds PowerBar reference (minimal)
 │   │   ├── TestAsteroidSpawner.cs        # Legacy test spawner (unused, safe to delete)
 │   │   └── Ship Modules/
-│   │       ├── ShipModule.cs             # Base class (empty stub)
-│   │       └── ModGatling.cs             # Mouse-aimed gatling turret
+│   │       ├── ShipModule.cs             # Base class with powerCost/powered/OnPowerChanged
+│   │       └── GatlingGunModule.cs       # Mouse-aimed gatling turret
 │   └── Settings/
 │       ├── Lit2DSceneTemplate.scenetemplate
 │       ├── Renderer2D.asset              # URP 2D Renderer asset
@@ -105,7 +107,7 @@ Roguelike_Ship/
 ### `GameManager.cs`
 - **Path:** `Assets/Scripts/GameManager.cs`
 - **Base:** `MonoBehaviour`
-- **Purpose:** Top-level stage controller. Singleton. Drives the stage timer, holds the sorted encounter list, and triggers encounters as progress advances.
+- **Purpose:** Top-level stage controller. Singleton. Drives the stage timer, holds the sorted encounter list, and triggers encounters as progress advances. Optionally freezes progress while an encounter is active (when `DistanceBar.waitForEncounterCompletion` is enabled).
 - **Key Fields:**
   - `Instance` (`static GameManager`) — singleton accessor
   - `_distanceBar` (`DistanceBar`) — reference to the UI progress bar
@@ -117,9 +119,10 @@ Roguelike_Ship/
 - **Key Methods:**
   - `Awake()` — sets singleton Instance
   - `Start()` — initialises timer, sorts encounters, calls `_encounterSpawner.GenerateStageEncounters()`
-  - `Update()` — increments timer by `Δtime × timeScale`, pushes progress to bar, checks encounters
+  - `Update()` — increments timer by `Δtime × timeScale`, pushes progress to bar, checks encounters; skips time increment when `waitForEncounterCompletion` is true and an encounter is active
   - `RegisterEncounter(Encounter)` — adds encounter to list, re-sorts by triggerPoint
-  - `CheckEncounters()` — fires next encounter when its triggerPoint is reached, advances cursor
+  - `CheckEncounters()` — fires next encounter when its triggerPoint is reached, clamps `timeSinceStageStart` to exact trigger point if `waitForEncounterCompletion` is enabled, advances cursor
+  - `HasActiveEncounter()` — returns true if any encounter has `IsActive == true`
 - **Relationships:** Depends on `DistanceBar`, `EncounterSpawner`, `Encounter`, `TimeController`
 
 ### `TimeController.cs`
@@ -138,7 +141,7 @@ Roguelike_Ship/
   - `Update()` — handles Space key input
 - **Events:**
   - `OnTimeStateChanged` — fired when time state changes
-- **Relationships:** Used by `TimeControlUI`, `GameManager`, `ModGatling`
+- **Relationships:** Used by `TimeControlUI`, `GameManager`, `GatlingGunModule`
 
 ### `TimeControlUI.cs`
 - **Path:** `Assets/Scripts/TimeControlUI.cs`
@@ -159,9 +162,11 @@ Roguelike_Ship/
   - `triggerPoint` (`float`) — progress [0,1] at which this encounter activates
   - `_hudIconTexture` (`Texture2D`) — custom texture for the HUD marker (optional, auto-generates a white circle if null)
   - `_hudIconImage` (`Image`, private get) — runtime Image component assigned by DistanceBar
+- **Key Properties:**
+  - `IsActive` (`bool`) — true when the encounter has been fired but not yet completed
 - **Key Methods:**
-  - `Fire()` — sets icon red, calls `OnTrigger()`
-  - `MarkCompleted()` — sets icon grey, disables component
+  - `Fire()` — sets `IsActive = true`, sets icon red, calls `OnTrigger()`
+  - `MarkCompleted()` — sets `IsActive = false`, sets icon grey, disables component
   - `SetIconPosition(Vector2)` — positions the HUD icon
   - `AssignIconImage(Image)` — called by DistanceBar to wire the runtime icon
   - `abstract OnTrigger()` — derived classes implement their encounter behaviour
@@ -201,6 +206,7 @@ Roguelike_Ship/
   - `_travelledBar` (`RectTransform`) — filled portion of the bar
   - `_shipIcon` (`RectTransform`) — icon that slides along the bar
   - `_encounterMarkerSprite` (`Sprite`) — optional custom sprite for encounter markers
+  - `waitForEncounterCompletion` (`bool`) — when true, GameManager freezes progress during active encounters
 - **Key Methods:**
   - `progressBar(timeFactor, timeSinceStageStart, totalStageDuration)` — calculates `percent` and calls `updateVisual()`
   - `updateVisual()` — positions `_shipIcon` and resizes `_travelledBar` based on `percent`
@@ -217,7 +223,35 @@ Roguelike_Ship/
 - **Key Methods:**
   - `Update()` — decrements `lifetime` by `Δtime`, destroys the GameObject when ≤ 0
   - `OnTriggerEnter2D(Collider2D)` — damages `Asteroid` on "Hazard" tag, destroys self
-- **Relationships:** Instantiated by `ModGatling`, damages `Asteroid`
+- **Relationships:** Instantiated by `GatlingGunModule`, damages `Asteroid`
+
+### `PowerBar.cs`
+- **Path:** `Assets/Scripts/PowerBar.cs`
+- **Base:** `MonoBehaviour`
+- **Purpose:** Visual power bar and the single authority on power capacity and usage. Displays power as a row of segments (cloned from a prefab) sized to fill the container with a 3:2 height:width ratio. Segments use different sprites for active vs inactive power.
+- **Key Fields:**
+  - `capacity` (`int`) — total power capacity (default 6)
+  - `used` (`int`) — current power usage
+  - `_segmentPrefab` (`Image`) — template image cloned for each segment
+  - `_container` (`RectTransform`) — parent transform for cloned segments
+  - `_spacing` (`float`) — gap between segments
+  - `_activeSprite`, `_inactiveSprite` (`Sprite`) — sprites swapped based on usage
+  - `segments` (`List<Image>`, private) — runtime-cloned segment images
+- **Key Methods:**
+  - `SetCapacity(int)` — rebuilds bar with new segment count
+  - `SetUsage(int)` — sets used count, updates display
+  - `IncreaseUsage(int)` / `DecreaseUsage(int)` — adjust usage by an amount
+  - `HasAvailablePower(int)` — returns true if `used + amount <= capacity`
+  - `RecalculateFromModules(ShipModule[])` — sums powered module costs, calls `SetUsage()`
+  - `Refresh()` — rebuilds bar from scratch (e.g. after container resize)
+- **Relationships:** Used by `Player.ToggleModulePower()`, referenced by `SystemsUI`
+
+### `SystemsUI.cs`
+- **Path:** `Assets/Scripts/SystemsUI.cs`
+- **Base:** `MonoBehaviour`
+- **Purpose:** Minimal UI holder. Retains a reference to the `PowerBar` for scene wiring. Power bar updates are driven directly by `Player.ToggleModulePower()`.
+- **Key Fields:**
+  - `_powerBar` (`PowerBar`) — visual power bar reference
 
 ### `Asteroid.cs`
 - **Path:** `Assets/Scripts/Asteroid.cs`
@@ -235,32 +269,43 @@ Roguelike_Ship/
 ### `Player.cs`
 - **Path:** `Assets/Scripts/Player.cs`
 - **Base:** `MonoBehaviour`
-- **Purpose:** Central player controller. Manages health, collision damage, and death. Attached to `PlayerShip` GameObject.
+- **Purpose:** Central player controller. Singleton. Manages health, collision damage, death, and the ship's power budget. Attached to `PlayerShip` GameObject.
 - **Key Fields:**
+  - `Instance` (`static Player`) — singleton accessor
   - `maxHealth` (`int`) — maximum health value
   - `invincibilityTime` (`float`) — seconds of invincibility after taking a hit
+  - `powerBar` (`PowerBar`) — reference to the visual power bar; the single authority on power capacity and usage
+  - `modules` (`ShipModule[]`) — serialized array of all `ShipModule` children
   - `currentHealth` (`int`, private) — current health
   - `invincibilityTimer` (`float`, private) — countdown for invincibility window
 - **Key Properties:**
   - `IsInvincible` (`bool`) — true when invincibility timer is active
 - **Key Methods:**
-  - `Start()` — initialises `currentHealth = maxHealth`
-  - `Update()` — decrements invincibility timer
+  - `Awake()` — sets singleton Instance
+  - `Start()` — initialises `currentHealth = maxHealth`, calls `powerBar.RecalculateFromModules(modules)` for initial power sync
+  - `Update()` — decrements invincibility timer; handles KeyCode.Alpha1 to toggle `modules[0]` (weapons)
+  - `ToggleModulePower(ShipModule)` — toggles a module: if turning on checks `powerBar.HasAvailablePower()`, updates `powerBar` directly via `IncreaseUsage`/`DecreaseUsage` (no module iteration)
   - `TakeDamage(amount)` — reduces health, triggers invincibility, calls `OnDeath()` at zero
   - `OnDeath()` — logs death and disables the GameObject
   - `OnCollisionEnter2D(Collision2D)` — deals 10 damage on `"Hazard"` tag, 20 on `"Enemy"` tag
-- **Relationships:** Ship GameObject has `Rigidbody2D` + `CompositeCollider2D` + child modules with colliders flagged `Used By Composite`
+- **Relationships:** References `PowerBar`, `ShipModule[]`; Ship GameObject has `Rigidbody2D` + `CompositeCollider2D` + child modules with colliders flagged `Used By Composite`
 
 ### `ShipModule.cs`
 - **Path:** `Assets/Scripts/Ship Modules/ShipModule.cs`
 - **Base:** `MonoBehaviour`
-- **Purpose:** Abstract base for ship weapon/module components.
-- **Status:** **Empty stub** — no fields, no methods. Intended as a parent class for all ship modules (e.g. `ModGatling`).
+- **Purpose:** Base class for all ship modules. Provides the power interface that Player's power budget system uses.
+- **Key Fields:**
+  - `powerCost` (`int`) — power consumed when this module is powered on
+  - `powered` (`bool`) — whether the module is currently active
+- **Key Methods:**
+  - `SetPowered(bool)` — sets powered state, fires `OnPowerChanged` event if state changed
+- **Events:**
+  - `OnPowerChanged` (`System.Action`) — fired when `powered` changes, used by Player/UI for power bar sync
 
-### `ModGatling.cs`
-- **Path:** `Assets/Scripts/Ship Modules/ModGatling.cs`
+### `GatlingGunModule.cs`
+- **Path:** `Assets/Scripts/Ship Modules/GatlingGunModule.cs`
 - **Base:** `ShipModule`
-- **Purpose:** Player-controlled gatling turret. Rotates smoothly toward the mouse cursor at `rotationSpeed` and fires bullets on left click. Bullets fire from the barrel's actual direction (`transform.up`).
+- **Purpose:** Player-controlled gatling turret. Rotates smoothly toward the mouse cursor at `rotationSpeed` and fires bullets on left click. Bullets fire from the barrel's actual direction (`transform.up`). Will not fire when `powered` is false.
 - **Key Fields:**
   - `_turret` (`GameObject`) — the turret assembly (rotated to aim)
   - `_bulletSpawnPoint` (`GameObject`) — muzzle position where bullets spawn
@@ -270,7 +315,8 @@ Roguelike_Ship/
   - `fireRate` (`float`) — cooldown between shots in seconds
   - `cooldown` (`float`, private) — current cooldown countdown
 - **Key Methods:**
-  - `Update()` — aims turret at mouse cursor via `Quaternion.RotateTowards`, fires on left click
+  - `Awake()` — sets `powerCost = 2`
+  - `Update()` — aims turret at mouse cursor via `Quaternion.RotateTowards`, early-returns if `!powered`, fires on left click
 - **Relationships:** Instantiates `Bullet.prefab`; parent class is `ShipModule`
 
 ---
@@ -292,7 +338,7 @@ Encounters are spawned programmatically by `EncounterSpawner` at stage start. HU
 
 | Prefab | Components | Used By |
 |---|---|---|
-| `Assets/Prefab/Bullet.prefab` | `SpriteRenderer` (bullet.png), `Rigidbody2D`, `Bullet` script | Spawned by `ModGatling.Fire()` |
+| `Assets/Prefab/Bullet.prefab` | `SpriteRenderer` (bullet.png), `Rigidbody2D`, `Bullet` script | Spawned by `GatlingGunModule.Fire()` |
 | `Assets/Prefab/Asteroid.prefab` | `SpriteRenderer` (Asteroid.png), `Rigidbody2D`, `Asteroid` script | Spawned by `AsteroidFieldEncounter` |
 | `Assets/Prefab/Encounters/AsteroidFieldEncounter.prefab` | `AsteroidFieldEncounter` script | Instantiated by `EncounterSpawner` |
 
@@ -304,9 +350,9 @@ Asteroid prefab: `speed = 2`, `driftAmount = 0.5`, `spinSpeed = 30`, `health = 2
 
 ## Known Gaps
 
-- **`ShipModule.cs`** — empty base class. No virtual methods, no shared module interface. `ModGatling` inherits from it but adds its own fields entirely.
+- **`ShipModule.cs`** — minimal base class with power fields only; no virtual methods, no shared module interface beyond power.
 - **No enemy/AI system** — no spawner, no enemy behaviour, no collision/damage.
-- **No ship systems / power budget** — weapons/shields/engines/sensors not yet toggleable.
+- **No shields/engines/sensors systems** — only weapons (GatlingGunModule) wired up; other system types exist as stubs in the design doc but have no modules yet.
 - **No warning system** — no visual/audio cue before encounter triggers.
 - **No boss fights** — no boss encounter type, no stage completion logic.
 - **No roguelike upgrades** — no mid-run upgrade choices after encounters.

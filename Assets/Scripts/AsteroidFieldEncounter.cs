@@ -5,7 +5,7 @@ public class AsteroidFieldEncounter : Encounter
 {
     public GameObject _asteroidPrefab;
     public int count = 30;
-    public Vector2 spawnArea = new Vector2(5, 80);
+    public Vector2 spawnArea = new Vector2(0, 50);
 
     private List<GameObject> spawnedAsteroids;
 
@@ -19,8 +19,8 @@ public class AsteroidFieldEncounter : Encounter
         for (int i = 0; i < count; i++)
         {
             Vector2 pos = new Vector2(
-                playerX + Random.Range(-10, 10),
-                Random.Range(spawnArea.y * 0.9f, spawnArea.y)
+                playerX + Random.Range(-25, 25),
+                Random.Range(spawnArea.y-10, spawnArea.y+10)
             );
             GameObject asteroid = Instantiate(_asteroidPrefab, pos, Quaternion.identity);
             spawnedAsteroids.Add(asteroid);
