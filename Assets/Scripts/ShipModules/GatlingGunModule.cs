@@ -18,6 +18,7 @@ public class GatlingGunModule : ShipModule
     void Start()
     {
         currentAmmo = magazineSize;
+        _projectiles = GameObject.Find("Projectiles");
     }
 
     protected override void OnPowerStateChanged()

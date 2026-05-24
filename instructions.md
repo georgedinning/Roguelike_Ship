@@ -65,7 +65,7 @@ Roguelike_Ship/
 │   │   └── SampleScene.unity             # Main game scene
 │   ├── Scripts/
 │   │   ├── GameManager.cs                # Stage timer, encounter list, singleton
-│   │   ├── Player.cs                     # Player health, collision, power budget
+│   │   ├── PlayerShip.cs                 # Player health, collision, power budget, module spawning
 │   │   ├── Bullet.cs                     # Projectile lifetime & cleanup
 │   │   ├── Asteroid.cs                   # Enemy asteroid physics & damage
 │   │   ├── DistanceBar.cs                # UI progress bar, encounter marker positioning
@@ -77,9 +77,9 @@ Roguelike_Ship/
 │   │   ├── PowerBar.cs                   # Visual power bar, capacity/usage authority
 │   │   ├── SystemsUI.cs                  # Holds PowerBar reference (minimal)
 │   │   ├── TestAsteroidSpawner.cs        # Legacy test spawner (unused, safe to delete)
-│   │   └── Ship Modules/
+│   │   └── ShipModules/
 │   │       ├── ShipModule.cs             # Base class with powerCost/powered/OnPowerChanged
-│   │       └── GatlingGunModule.cs       # Mouse-aimed gatling turret
+│   │       └── GatlingGunModule.cs       # Mouse-aimed gatling turret with magazine/reload
 │   └── Settings/
 │       ├── Lit2DSceneTemplate.scenetemplate
 │       ├── Renderer2D.asset              # URP 2D Renderer asset
@@ -244,12 +244,12 @@ Roguelike_Ship/
   - `HasAvailablePower(int)` — returns true if `used + amount <= capacity`
   - `RecalculateFromModules(ShipModule[])` — sums powered module costs, calls `SetUsage()`
   - `Refresh()` — rebuilds bar from scratch (e.g. after container resize)
-- **Relationships:** Used by `Player.ToggleModulePower()`, referenced by `SystemsUI`
+- **Relationships:** Used by `PlayerShip.ToggleModulePower()`, referenced by `SystemsUI`
 
 ### `SystemsUI.cs`
 - **Path:** `Assets/Scripts/SystemsUI.cs`
 - **Base:** `MonoBehaviour`
-- **Purpose:** Minimal UI holder. Retains a reference to the `PowerBar` for scene wiring. Power bar updates are driven directly by `Player.ToggleModulePower()`.
+- **Purpose:** Minimal UI holder. Retains a reference to the `PowerBar` for scene wiring. Power bar updates are driven directly by `PlayerShip.ToggleModulePower()`.
 - **Key Fields:**
   - `_powerBar` (`PowerBar`) — visual power bar reference
 
@@ -266,51 +266,56 @@ Roguelike_Ship/
   - `TakeDamage(float)` — reduces health, destroys on zero
 - **Relationships:** Spawned by `AsteroidFieldEncounter`, damaged by `Bullet`
 
-### `Player.cs`
-- **Path:** `Assets/Scripts/Player.cs`
+### `PlayerShip.cs`
+- **Path:** `Assets/Scripts/PlayerShip.cs`
 - **Base:** `MonoBehaviour`
-- **Purpose:** Central player controller. Singleton. Manages health, collision damage, death, and the ship's power budget. Attached to `PlayerShip` GameObject.
+- **Purpose:** Central player controller. Singleton. Manages health, collision damage, death, power budget, and module spawning. Attached to the ship root GameObject (tagged `"Player"`). On start, spawns modules in a grid layout defined by grid parameters.
 - **Key Fields:**
-  - `Instance` (`static Player`) — singleton accessor
+  - `Instance` (`static PlayerShip`) — singleton accessor
   - `maxHealth` (`int`) — maximum health value
-  - `invincibilityTime` (`float`) — seconds of invincibility after taking a hit
   - `powerBar` (`PowerBar`) — reference to the visual power bar; the single authority on power capacity and usage
-  - `modules` (`ShipModule[]`) — serialized array of all `ShipModule` children
+  - `gridColumns` (`int`) — number of columns in the grid (default 5, rows fill left-to-right, then bottom-to-top)
+  - `gridRows` (`int`) — number of rows in the grid (default 5)
+  - `cellSpacing` (`Vector2`) — horizontal and vertical spacing between slot positions (auto-centers the grid around origin)
+  - `_gatlingGunPrefab` (`GameObject`) — prefab reference for the gatling gun module
+  - `moduleSlots` (`ModuleSlot[]`, private) — runtime module grid, allocated in `Start()`
   - `currentHealth` (`int`, private) — current health
-  - `invincibilityTimer` (`float`, private) — countdown for invincibility window
-- **Key Properties:**
-  - `IsInvincible` (`bool`) — true when invincibility timer is active
+- **Key Types:**
+  - `ModuleSlot` (`[System.Serializable] class`) — bundles `_modulePrefab` (GameObject) and runtime `spawnedModule` (ShipModule); used internally by PlayerShip
 - **Key Methods:**
   - `Awake()` — sets singleton Instance
-  - `Start()` — initialises `currentHealth = maxHealth`, calls `powerBar.RecalculateFromModules(modules)` for initial power sync
-  - `Update()` — decrements invincibility timer; handles KeyCode.Alpha1 to toggle `modules[0]` (weapons)
+  - `AllocateSlots(int)` — creates the module grid with N slots; call before `Start()` to define grid size
+  - `SetModule(int, GameObject)` — assigns a module prefab to a specific slot index
+  - `Start()` — initialises `currentHealth = maxHealth`, allocates a 5×5 grid, fills the middle row (row 2) with `_gatlingGunPrefab`, iterates `moduleSlots`, computes each slot's position from `(row = index / gridColumns, col = index % gridColumns)`, auto-centers the grid, instantiates each prefab at that local position parented to the ship, collects spawned `ShipModule` references, calls `powerBar.RecalculateFromModules()`
+  - `Update()` — handles shift+click module toggling via `Physics2D.OverlapPoint`
   - `ToggleModulePower(ShipModule)` — toggles a module: if turning on checks `powerBar.HasAvailablePower()`, updates `powerBar` directly via `IncreaseUsage`/`DecreaseUsage` (no module iteration)
-  - `TakeDamage(amount)` — reduces health, triggers invincibility, calls `OnDeath()` at zero
+  - `TakeDamage(amount)` — reduces health, calls `OnDeath()` at zero
   - `OnDeath()` — logs death and disables the GameObject
-  - `OnCollisionEnter2D(Collision2D)` — deals 10 damage on `"Hazard"` tag, 20 on `"Enemy"` tag
-- **Relationships:** References `PowerBar`, `ShipModule[]`; Ship GameObject has `Rigidbody2D` + `CompositeCollider2D` + child modules with colliders flagged `Used By Composite`
+  - `OnCollisionEnter2D(Collision2D)` — deals 10 damage on `"Hazard"` tag
+- **Relationships:** References `PowerBar`; ship GameObject has `Rigidbody2D` + `CompositeCollider2D`
 
 ### `ShipModule.cs`
-- **Path:** `Assets/Scripts/Ship Modules/ShipModule.cs`
+- **Path:** `Assets/Scripts/ShipModules/ShipModule.cs`
 - **Base:** `MonoBehaviour`
-- **Purpose:** Base class for all ship modules. Provides the power interface that Player's power budget system uses.
+- **Purpose:** Base class for all ship modules. Provides the power interface that PlayerShip's power budget system uses.
 - **Key Fields:**
   - `powerCost` (`int`) — power consumed when this module is powered on
   - `powered` (`bool`) — whether the module is currently active
 - **Key Methods:**
   - `SetPowered(bool)` — sets powered state, fires `OnPowerChanged` event if state changed
 - **Events:**
-  - `OnPowerChanged` (`System.Action`) — fired when `powered` changes, used by Player/UI for power bar sync
+  - `OnPowerChanged` (`System.Action`) — fired when `powered` changes, used by PlayerShip/UI for power bar sync
 
 ### `GatlingGunModule.cs`
-- **Path:** `Assets/Scripts/Ship Modules/GatlingGunModule.cs`
+- **Path:** `Assets/Scripts/ShipModules/GatlingGunModule.cs`
 - **Base:** `ShipModule`
-- **Purpose:** Player-controlled gatling turret. Rotates smoothly toward the mouse cursor at `rotationSpeed` and fires bullets on left click. Bullets fire from the barrel's actual direction (`transform.up`). Will not fire when `powered` is false. Magazine system: fires until empty, then auto-reloads (`reloadTime` seconds). Turret aims during reload but doesn't fire.
+- **Purpose:** Player-controlled gatling turret. Rotates smoothly toward the mouse cursor at `rotationSpeed` and fires bullets on left click. Bullets fire from the barrel's actual direction (`transform.up`). Will not fire when `powered` is false. Magazine system: fires until empty, then auto-reloads (`reloadTime` seconds). Turret aims during reload but doesn't fire. Visual ammo sprites deactivate on each shot, re-enable on reload.
 - **Key Fields:**
   - `_turret` (`GameObject`) — the turret assembly (rotated to aim)
   - `_bulletSpawnPoint` (`GameObject`) — muzzle position where bullets spawn
   - `_projectiles` (`GameObject`) — parent transform for spawned bullets
   - `_bulletPrefab` (`GameObject`) — `Bullet.prefab` reference
+  - `_ammoSprites` (`GameObject[]`) — one sprite per round; deactivated as ammo is spent, reactivated on reload
   - `rotationSpeed` (`float`) — turret rotation speed in degrees/second
   - `fireRate` (`float`) — cooldown between shots in seconds
   - `magazineSize` (`int`) — rounds per magazine (default 10)
@@ -320,10 +325,10 @@ Roguelike_Ship/
   - `isReloading` (`bool`, private) — true while reloading
   - `reloadTimer` (`float`, private) — remaining reload time
 - **Key Methods:**
-  - `Start()` — initialises `currentAmmo = magazineSize`
-  - `OnPowerStateChanged()` — tints sprites white/grey based on `powered`
-  - `Update()` — aims turret at mouse cursor, handles shift suppression / power gating / reload timer / ammo-limited firing
-- **Update flow:** shift held → return | `!powered` → return | aim at cursor | `isReloading` → tick timer, return | fire if `Input.GetMouseButton(0) && cooldown == 0 && currentAmmo > 0` | decrement ammo, start reload if empty
+  - `Start()` — initialises `currentAmmo = magazineSize`, finds `"Projectiles"` GameObject for bullet parent
+  - `OnPowerStateChanged()` — tints all child sprites white/grey based on `powered`
+  - `Update()` — aims turret at mouse cursor, handles shift suppression / power gating / reload timer / ammo-limited firing, manages ammo sprite visibility
+- **Update flow:** shift held → return | `!powered` → return | aim at cursor | `isReloading` → tick timer, re-enable all ammo sprites on completion, return | fire if `Input.GetMouseButton(0) && cooldown == 0 && currentAmmo > 0` | deactivate one ammo sprite, decrement ammo, start reload if empty
 - **Relationships:** Instantiates `Bullet.prefab`; parent class is `ShipModule`
 
 ---
@@ -334,7 +339,7 @@ The main (and only) scene. Contains:
 
 - **GameManager** GameObject — hosts `GameManager.cs`, `TimeController`, `DistanceBar` components
   - **Encounters** child — hosts `EncounterSpawner` component
-- **PlayerShip** — root GameObject for the player. Has no SpriteRenderer; visuals come from child modules. Components: `Rigidbody2D`, `CompositeCollider2D`, `Player.cs`
+- **PlayerShip** — root GameObject for the player. Has no SpriteRenderer; visuals come from child modules. Components: `Rigidbody2D`, `CompositeCollider2D`, `PlayerShip.cs`
 - **Canvas / HUD** — distance bar elements (`_blankBackBar`, `_travelledBar`, `_shipIcon`) as RectTransform children, plus time control buttons (Pause/Play/Fast)
 
 Encounters are spawned programmatically by `EncounterSpawner` at stage start. HUD markers for each encounter are created at runtime by `DistanceBar.PositionEncounterMarker()`.
@@ -375,7 +380,7 @@ Asteroid prefab: `speed = 2`, `driftAmount = 0.5`, `spinSpeed = 30`, `health = 2
 
 Public fields use underscore prefix (`_`) when they are **object/reference assignments** — GameObjects, Components, Transforms, or other asset references that get dragged into Inspector slots (e.g. `_turret`, `_bulletSpawnPoint`, `_distanceBar`, `_blankBackBar`).
 
-Public fields that are **value sliders or numeric tunables** do not get the underscore prefix (e.g. `rotationSpeed`, `fireRate`, `maxHealth`, `invincibilityTime`).
+Public fields that are **value sliders or numeric tunables** do not get the underscore prefix (e.g. `rotationSpeed`, `fireRate`, `maxHealth`, `reloadTime`).
 
 This makes it immediately clear in the Inspector which fields are wiring references vs. tuning values.
 
