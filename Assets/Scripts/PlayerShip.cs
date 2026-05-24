@@ -65,6 +65,47 @@ public class PlayerShip : MonoBehaviour
         moduleSlots[slotIndex]._modulePrefab = modulePrefab;
     }
 
+    /// <summary>
+    /// Spawn the module in the given slot and return its ShipModule component.
+    /// Slot must have a prefab assigned. Position is computed from the grid layout.
+    /// </summary>
+    public ShipModule SpawnModuleAtSlot(int slotIndex)
+    {
+        if (moduleSlots == null || slotIndex < 0 || slotIndex >= moduleSlots.Length)
+            return null;
+
+        ModuleSlot slot = moduleSlots[slotIndex];
+        if (slot._modulePrefab == null) return null;
+
+        int row = slotIndex / gridColumns;
+        int col = slotIndex % gridColumns;
+        Vector3 localPos = new Vector3(
+            col * cellSpacing.x - cellSpacing.x * (gridColumns - 1) / 2f,
+            row * cellSpacing.y - cellSpacing.y * (gridRows - 1) / 2f,
+            0f
+        );
+
+        GameObject go = Instantiate(slot._modulePrefab, transform);
+        go.transform.localPosition = localPos;
+        go.transform.localRotation = Quaternion.identity;
+        slot.spawnedModule = go.GetComponent<ShipModule>();
+        return slot.spawnedModule;
+    }
+
+    /// <summary>
+    /// Force the CompositeCollider2D to rebuild from current child colliders.
+    /// Call after adding or removing modules at runtime.
+    /// </summary>
+    public void RefreshHullCollider()
+    {
+        CompositeCollider2D composite = GetComponent<CompositeCollider2D>();
+        if (composite != null)
+        {
+            composite.enabled = false;
+            composite.enabled = true;
+        }
+    }
+
     void Start()
     {
         currentHealth = maxHealth;
@@ -80,28 +121,12 @@ public class PlayerShip : MonoBehaviour
             SetModule(slotIndex, _gatlingGunPrefab);
         }
 
-        // Spawn modules positioned in a grid layout
+        // Spawn all modules and refresh the composite hull collider
         ShipModule[] spawnedModules = new ShipModule[moduleSlots.Length];
         for (int i = 0; i < moduleSlots.Length; i++)
-        {
-            ModuleSlot slot = moduleSlots[i];
-            if (slot._modulePrefab == null) continue;
+            spawnedModules[i] = SpawnModuleAtSlot(i);
 
-            int row = i / gridColumns;
-            int col = i % gridColumns;
-            Vector3 localPos = new Vector3(
-                col * cellSpacing.x -cellSpacing.x * (gridColumns-1) / 2f,
-                row * cellSpacing.y -cellSpacing.y * (gridRows-1) / 2f,
-                0f
-            );
-
-            GameObject go = Instantiate(slot._modulePrefab, transform);
-            go.transform.parent = transform;
-            go.transform.localPosition = localPos;
-            go.transform.localRotation = Quaternion.identity;
-            slot.spawnedModule = go.GetComponent<ShipModule>();
-            spawnedModules[i] = slot.spawnedModule;
-        }
+        RefreshHullCollider();
 
         if (powerBar != null)
             powerBar.RecalculateFromModules(spawnedModules);

@@ -59,6 +59,10 @@ Roguelike_Ship/
 │   ├── Prefab/
 │   │   ├── Bullet.prefab                 # Bullet projectile prefab
 │   │   ├── Asteroid.prefab               # Asteroid enemy prefab
+│   │   ├── ShipModules/
+│   │   │   └── Module_Gatling.prefab     # Gatling gun turret module
+│   │   ├── UI/
+│   │   │   └── Segment.prefab            # Power bar segment image
 │   │   └── Encounters/
 │   │       └── AsteroidFieldEncounter.prefab  # Asteroid field encounter prefab
 │   ├── Scenes/
@@ -218,7 +222,7 @@ Roguelike_Ship/
 - **Base:** `MonoBehaviour`
 - **Purpose:** Projectile behaviour — auto-destructs after lifetime expires, damages asteroids on collision.
 - **Key Fields:**
-  - `lifetime` (`float`) — seconds before the bullet is destroyed (default 10)
+  - `lifetime` (`float`) — seconds before the bullet is destroyed (default 4.5)
   - `damage` (`float`) — damage dealt to asteroids on hit (default 10)
 - **Key Methods:**
   - `Update()` — decrements `lifetime` by `Δtime`, destroys the GameObject when ≤ 0
@@ -286,7 +290,9 @@ Roguelike_Ship/
   - `Awake()` — sets singleton Instance
   - `AllocateSlots(int)` — creates the module grid with N slots; call before `Start()` to define grid size
   - `SetModule(int, GameObject)` — assigns a module prefab to a specific slot index
-  - `Start()` — initialises `currentHealth = maxHealth`, allocates a 5×5 grid, fills the middle row (row 2) with `_gatlingGunPrefab`, iterates `moduleSlots`, computes each slot's position from `(row = index / gridColumns, col = index % gridColumns)`, auto-centers the grid, instantiates each prefab at that local position parented to the ship, collects spawned `ShipModule` references, calls `powerBar.RecalculateFromModules()`
+  - `SpawnModuleAtSlot(int)` — instantiates the prefab in the given slot at its computed grid position, returns the `ShipModule` component
+  - `RefreshHullCollider()` — disables and re-enables the `CompositeCollider2D` to rebuild geometry from current child colliders
+  - `Start()` — initialises `currentHealth = maxHealth`, allocates a 5×5 grid, fills the middle row (row 2) with `_gatlingGunPrefab`, iterates `moduleSlots` calling `SpawnModuleAtSlot(i)`, calls `RefreshHullCollider()`, then `powerBar.RecalculateFromModules()`
   - `Update()` — handles shift+click module toggling via `Physics2D.OverlapPoint`
   - `ToggleModulePower(ShipModule)` — toggles a module: if turning on checks `powerBar.HasAvailablePower()`, updates `powerBar` directly via `IncreaseUsage`/`DecreaseUsage` (no module iteration)
   - `TakeDamage(amount)` — reduces health, calls `OnDeath()` at zero
@@ -352,17 +358,19 @@ Encounters are spawned programmatically by `EncounterSpawner` at stage start. HU
 |---|---|---|
 | `Assets/Prefab/Bullet.prefab` | `SpriteRenderer` (bullet.png), `Rigidbody2D`, `Bullet` script | Spawned by `GatlingGunModule.Fire()` |
 | `Assets/Prefab/Asteroid.prefab` | `SpriteRenderer` (Asteroid.png), `Rigidbody2D`, `Asteroid` script | Spawned by `AsteroidFieldEncounter` |
+| `Assets/Prefab/ShipModules/Module_Gatling.prefab` | Gatling turret assembly, `GatlingGunModule` script | Spawned by `PlayerShip` in grid |
+| `Assets/Prefab/UI/Segment.prefab` | `Image` component | Cloned by `PowerBar` for segment display |
 | `Assets/Prefab/Encounters/AsteroidFieldEncounter.prefab` | `AsteroidFieldEncounter` script | Instantiated by `EncounterSpawner` |
 
-Bullet prefab: `lifetime = 10`, `damage = 10`, `Rigidbody2D` with `Dynamic` body type, scale `(0.2, 0.2)`.
+Bullet prefab: `lifetime = 4.5`, `damage = 10`, `Rigidbody2D` with `Dynamic` body type, scale `(0.2, 0.2)`.
 
-Asteroid prefab: `speed = 2`, `driftAmount = 0.5`, `spinSpeed = 30`, `health = 20`.
+Asteroid prefab: `speed = 1.5`, `driftAmount = 0.7`, `spinSpeed = 30`, `health = 20`.
 
 ---
 
 ## Known Gaps
 
-- **`ShipModule.cs`** — minimal base class with power fields only; no virtual methods, no shared module interface beyond power.
+- **`ShipModule.cs`** — minimal base class with power fields only; no shared module interface beyond power.
 - **No enemy/AI system** — no spawner, no enemy behaviour, no collision/damage.
 - **No shields/engines/sensors systems** — only weapons (GatlingGunModule) wired up; other system types exist as stubs in the design doc but have no modules yet.
 - **No warning system** — no visual/audio cue before encounter triggers.
