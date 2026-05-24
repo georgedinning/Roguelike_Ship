@@ -47,5 +47,5 @@ MonoBehaviour:
   triggerPoint: 0.3
   _hudIconTexture: {fileID: 2800000, guid: baa2a00b16840704bbc1fa8cd1238140, type: 3}
   _asteroidPrefab: {fileID: 1000000001, guid: 8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c, type: 3}
-  count: 30
-  spawnArea: {x: 0, y: 35}
+  count: 100
+  spawnArea: {x: 0, y: 45}

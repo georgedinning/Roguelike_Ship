@@ -12,5 +12,8 @@ public class ShipModule : MonoBehaviour
         if (powered == on) return;
         powered = on;
         OnPowerChanged?.Invoke();
+        OnPowerStateChanged();
     }
+
+    protected virtual void OnPowerStateChanged() { }
 }

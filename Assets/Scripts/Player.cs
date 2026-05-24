@@ -41,8 +41,22 @@ public class Player : MonoBehaviour
         if (invincibilityTimer > 0)
             invincibilityTimer -= Time.deltaTime;
 
-        if (Input.GetKeyDown(KeyCode.Alpha1) && modules.Length > 0)
-            ToggleModulePower(modules[0]);
+        // Shift + Left Click → toggle the module under the cursor
+        if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+        {
+            if (Input.GetMouseButtonDown(0))
+            {
+                int moduleLayer = LayerMask.GetMask("ShipModules");
+                Vector2 worldPoint = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+                Collider2D hit = Physics2D.OverlapPoint(worldPoint, moduleLayer);
+                if (hit != null)
+                {
+                    ShipModule module = hit.GetComponentInParent<ShipModule>();
+                    if (module != null)
+                        ToggleModulePower(module);
+                }
+            }
+        }
     }
 
     public void ToggleModulePower(ShipModule module)

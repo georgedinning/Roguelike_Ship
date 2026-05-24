@@ -2,8 +2,8 @@ using UnityEngine;
 
 public class Asteroid : MonoBehaviour
 {
-    public float speed = 2f;
-    public float driftAmount = 0.5f;
+    public float speed = 1.5f;
+    public float driftAmount = 0.7f;
     public float spinSpeed = 30f;
     public float health = 20f;
 

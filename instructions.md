@@ -305,7 +305,7 @@ Roguelike_Ship/
 ### `GatlingGunModule.cs`
 - **Path:** `Assets/Scripts/Ship Modules/GatlingGunModule.cs`
 - **Base:** `ShipModule`
-- **Purpose:** Player-controlled gatling turret. Rotates smoothly toward the mouse cursor at `rotationSpeed` and fires bullets on left click. Bullets fire from the barrel's actual direction (`transform.up`). Will not fire when `powered` is false.
+- **Purpose:** Player-controlled gatling turret. Rotates smoothly toward the mouse cursor at `rotationSpeed` and fires bullets on left click. Bullets fire from the barrel's actual direction (`transform.up`). Will not fire when `powered` is false. Magazine system: fires until empty, then auto-reloads (`reloadTime` seconds). Turret aims during reload but doesn't fire.
 - **Key Fields:**
   - `_turret` (`GameObject`) — the turret assembly (rotated to aim)
   - `_bulletSpawnPoint` (`GameObject`) — muzzle position where bullets spawn
@@ -313,10 +313,17 @@ Roguelike_Ship/
   - `_bulletPrefab` (`GameObject`) — `Bullet.prefab` reference
   - `rotationSpeed` (`float`) — turret rotation speed in degrees/second
   - `fireRate` (`float`) — cooldown between shots in seconds
+  - `magazineSize` (`int`) — rounds per magazine (default 10)
+  - `reloadTime` (`float`) — seconds to reload when magazine empties (default 2)
   - `cooldown` (`float`, private) — current cooldown countdown
+  - `currentAmmo` (`int`, private) — rounds remaining in current magazine
+  - `isReloading` (`bool`, private) — true while reloading
+  - `reloadTimer` (`float`, private) — remaining reload time
 - **Key Methods:**
-  - `Awake()` — sets `powerCost = 2`
-  - `Update()` — aims turret at mouse cursor via `Quaternion.RotateTowards`, early-returns if `!powered`, fires on left click
+  - `Start()` — initialises `currentAmmo = magazineSize`
+  - `OnPowerStateChanged()` — tints sprites white/grey based on `powered`
+  - `Update()` — aims turret at mouse cursor, handles shift suppression / power gating / reload timer / ammo-limited firing
+- **Update flow:** shift held → return | `!powered` → return | aim at cursor | `isReloading` → tick timer, return | fire if `Input.GetMouseButton(0) && cooldown == 0 && currentAmmo > 0` | decrement ammo, start reload if empty
 - **Relationships:** Instantiates `Bullet.prefab`; parent class is `ShipModule`
 
 ---

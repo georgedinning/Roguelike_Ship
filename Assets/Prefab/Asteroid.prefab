@@ -102,8 +102,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speed: 2
-  driftAmount: 0.5
+  speed: 1.5
+  driftAmount: 0.7
   spinSpeed: 30
   health: 30
 --- !u!58 &-1956037352149422469
