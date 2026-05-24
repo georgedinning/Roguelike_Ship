@@ -18,6 +18,9 @@ public class PlayerShip : MonoBehaviour
     [Header("Power")]
     public PowerBar powerBar;
 
+    [Header("Fog of War")]
+    public SpriteRenderer _fogOverlay;
+
     [Header("Module Grid")]
     public int gridColumns = 5;
     public int gridRows = 5;
@@ -109,6 +112,16 @@ public class PlayerShip : MonoBehaviour
     void Start()
     {
         currentHealth = maxHealth;
+
+        // Ensure FogManager exists and wire up the overlay
+        FogManager fog = FogManager.Instance;
+        if (fog == null)
+        {
+            GameObject fogObj = new GameObject("FogManager");
+            fog = fogObj.AddComponent<FogManager>();
+        }
+        if (fog._fogOverlay == null && _fogOverlay != null)
+            fog._fogOverlay = _fogOverlay;
 
         int totalSlots = gridRows * gridColumns;
         AllocateSlots(totalSlots);

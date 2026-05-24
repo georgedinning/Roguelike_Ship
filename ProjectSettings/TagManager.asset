@@ -44,5 +44,11 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: FogOverlay
+    uniqueID: 521895573
+    locked: 0
+  - name: FogDots
+    uniqueID: 1199092201
+    locked: 0
   m_RenderingLayers:
   - Default

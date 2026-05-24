@@ -81,9 +81,14 @@ Roguelike_Ship/
 │   │   ├── PowerBar.cs                   # Visual power bar, capacity/usage authority
 │   │   ├── SystemsUI.cs                  # Holds PowerBar reference (minimal)
 │   │   ├── TestAsteroidSpawner.cs        # Legacy test spawner (unused, safe to delete)
-│   │   └── ShipModules/
-│   │       ├── ShipModule.cs             # Base class with powerCost/powered/OnPowerChanged
-│   │       └── GatlingGunModule.cs       # Mouse-aimed gatling turret with magazine/reload
+│   │   ├── ShipModules/
+│   │   │   ├── ShipModule.cs             # Base class with powerCost/powered/OnPowerChanged
+│   │   │   ├── GatlingGunModule.cs       # Mouse-aimed gatling turret with magazine/reload
+│   │   │   └── SensorModule.cs           # Sensor array; extends fog detection range
+│   │   └── Fog/
+│   │       ├── FogManager.cs             # Singleton; radii stacking, radar visuals, entity tracking
+│   │       ├── FogAffected.cs            # On entities; registers with FogManager, dot visibility
+│   │       └── FogOverlayShader.shader   # URP shader; radial fog alpha based on ship distance
 │   └── Settings/
 │       ├── Lit2DSceneTemplate.scenetemplate
 │       ├── Renderer2D.asset              # URP 2D Renderer asset
@@ -282,6 +287,7 @@ Roguelike_Ship/
   - `gridRows` (`int`) — number of rows in the grid (default 5)
   - `cellSpacing` (`Vector2`) — horizontal and vertical spacing between slot positions (auto-centers the grid around origin)
   - `_gatlingGunPrefab` (`GameObject`) — prefab reference for the gatling gun module
+  - `_fogOverlay` (`SpriteRenderer`) — full-screen overlay with FogOverlayShader for fog of war
   - `moduleSlots` (`ModuleSlot[]`, private) — runtime module grid, allocated in `Start()`
   - `currentHealth` (`int`, private) — current health
 - **Key Types:**
@@ -337,6 +343,53 @@ Roguelike_Ship/
 - **Update flow:** shift held → return | `!powered` → return | aim at cursor | `isReloading` → tick timer, re-enable all ammo sprites on completion, return | fire if `Input.GetMouseButton(0) && cooldown == 0 && currentAmmo > 0` | deactivate one ammo sprite, decrement ammo, start reload if empty
 - **Relationships:** Instantiates `Bullet.prefab`; parent class is `ShipModule`
 
+### `SensorModule.cs`
+- **Path:** `Assets/Scripts/ShipModules/SensorModule.cs`
+- **Base:** `ShipModule`
+- **Purpose:** Sensor array module. Each powered sensor contributes `fogStartRadius` and `fogEndRadius` to FogManager's total range, expanding the fog start/end zones, and `radarEndRadius` for the radar boundary. Multiple sensors stack additively.
+- **Key Fields:**
+  - `fogStartRadius` (`float`) — radius contributed to fog start (where fog begins, default 10)
+  - `fogEndRadius` (`float`) — radius contributed to fog end (where fog is fully opaque, default 30)
+  - `radarEndRadius` (`float`) — radius contributed to radar end (where dots/ring/spokes stop, default 50)
+- **Key Methods:**
+  - `Start()` — registers with FogManager
+  - `OnDestroy()` — unregisters from FogManager
+  - `OnPowerStateChanged()` — tints sprites white/grey based on `powered`
+- **Relationships:** Used by `FogManager` for radius stacking; parent class is `ShipModule`
+
+### `FogManager.cs`
+- **Path:** `Assets/Scripts/Fog/FogManager.cs`
+- **Base:** `MonoBehaviour`
+- **Purpose:** Singleton. Manages the fog of war system: totals sensor radii from all powered `SensorModule` instances, updates the `FogOverlayShader` with ship position and radii each frame, creates and animates the radar ring (green pulsing circle at radar end) and 8 radial spokes (spanning fogStart→radarEnd with alpha fade), and tracks all `FogAffected` entities for per-frame dot visibility.
+- **Key Fields:**
+  - `Instance` (`static FogManager`) — singleton accessor
+  - `_fogOverlay` (`SpriteRenderer`) — the full-screen overlay carrying the fog shader
+  - `ringColor` — green tint for all radar lines
+  - `ringPulseSpeed` — pulse oscillation rate (default 1)
+  - `ringWidth` — radar ring thickness (default 0.015)
+  - `spokeWidth` — radial spoke thickness (default 0.02)
+  - `baseFogStart`, `baseFogEnd`, `baseRadarEnd` — base radii before sensor stacking
+  - `TotalFogStart`, `TotalFogEnd`, `TotalRadarEnd` (`float`, public) — stacked radii from all powered sensors
+- **Key Methods:**
+  - `Start()` — finds ship, caches overlay material, creates radar ring LineRenderer and 8 radial spoke LineRenderers
+  - `Update()` — recalculates radii from active sensors (`UpdateFog`), pushes shader globals (`_ShipPos`, `_FogStart`, `_FogEnd`), animates ring pulse + spoke alpha gradient (transparent at fogStart, opaque at fogEnd→radarEnd), updates entity dot visibility
+  - `RegisterSensor(SensorModule)` / `UnregisterSensor(SensorModule)` — sensor lifecycle
+  - `RegisterEntity(FogAffected)` / `UnregisterEntity(FogAffected)` — entity lifecycle
+- **Relationships:** Depends on `SensorModule` for radii, `FogAffected` for entity dots, `FogOverlayShader` for visual masking
+
+### `FogAffected.cs`
+- **Path:** `Assets/Scripts/Fog/FogAffected.cs`
+- **Base:** `MonoBehaviour`
+- **Purpose:** Attached to entities that should be hidden by fog (asteroids, enemies). On start, creates a child dot sprite on the `FogDots` sorting layer and registers with `FogManager`. Each frame, `FogManager.Update()` calls `UpdateDot()` which shows the dot when the entity is in the mid-range band (fogEnd–radarEnd) and hides it otherwise.
+- **Key Fields:**
+  - `dotColor` (`Color`) — tint of the detection dot (default white)
+  - `dotSize` (`float`) — scale of the dot sprite (default 0.5)
+- **Key Methods:**
+  - `Start()` — generates dot texture, creates dot child, registers with FogManager
+  - `OnDestroy()` — unregisters from FogManager
+  - `UpdateDot(float, float, float)` — called by FogManager; enables dot when `distance > fogEnd && distance <= radarEnd`
+- **Relationships:** Registered with `FogManager`, dot rendered on `FogDots` sorting layer
+
 ---
 
 ## Scene Summary — `SampleScene.unity`
@@ -372,7 +425,7 @@ Asteroid prefab: `speed = 1.5`, `driftAmount = 0.7`, `spinSpeed = 30`, `health =
 
 - **`ShipModule.cs`** — minimal base class with power fields only; no shared module interface beyond power.
 - **No enemy/AI system** — no spawner, no enemy behaviour, no collision/damage.
-- **No shields/engines/sensors systems** — only weapons (GatlingGunModule) wired up; other system types exist as stubs in the design doc but have no modules yet.
+- **No shields/engines systems** — only weapons (GatlingGunModule) and sensors (SensorModule) wired up; shields and engines exist as stubs in the design doc but have no modules yet.
 - **No warning system** — no visual/audio cue before encounter triggers.
 - **No boss fights** — no boss encounter type, no stage completion logic.
 - **No roguelike upgrades** — no mid-run upgrade choices after encounters.
