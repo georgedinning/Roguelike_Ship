@@ -120,7 +120,7 @@ Roguelike_Ship/
 ### `GameManager.cs`
 - **Path:** `Assets/Scripts/GameManager.cs`
 - **Base:** `MonoBehaviour`
-- **Purpose:** Top-level stage controller. Singleton. Drives the stage timer, holds the sorted encounter list, and triggers encounters as progress advances. Optionally freezes progress while an encounter is active (when `DistanceBar.waitForEncounterCompletion` is enabled).
+- **Purpose:** Top-level stage controller. Singleton. Drives the stage timer, holds the sorted encounter list, and triggers encounters as progress advances. Optionally freezes progress while an encounter is active (when `DistanceBar.waitForEncounterCompletion` is enabled). Exposes next-encounter properties used by `DistanceBar`'s warning system.
 - **Key Fields:**
   - `Instance` (`static GameManager`) — singleton accessor
   - `_distanceBar` (`DistanceBar`) — reference to the UI progress bar
@@ -129,6 +129,10 @@ Roguelike_Ship/
   - `totalStageDuration` (`float`) — total length of the stage in seconds
   - `timeSinceStageStart` (`float`, private) — elapsed time for current stage
   - `nextEncounterIndex` (`int`, private) — cursor into the sorted encounter list
+- **Key Properties:**
+  - `HasNextEncounter` (`bool`) — true if there are still pending encounters
+  - `NextEncounterTriggerPoint` (`float`) — triggerPoint of the next pending encounter (1.0 if none)
+  - `NextEncounterWarningMessage` (`string`) — warningMessage of the next pending encounter ("" if none)
 - **Key Methods:**
   - `Awake()` — sets singleton Instance
   - `Start()` — initialises timer, sorts encounters, calls `_encounterSpawner.GenerateStageEncounters()`
@@ -173,6 +177,7 @@ Roguelike_Ship/
 - **Purpose:** Abstract base class for all encounter types. Each has a trigger point along the distance bar and a HUD marker icon.
 - **Key Fields:**
   - `triggerPoint` (`float`) — progress [0,1] at which this encounter activates
+  - `warningMessage` (`string`) — message shown by DistanceBar's warning system (default "Unknown Encounter")
   - `_hudIconTexture` (`Texture2D`) — custom texture for the HUD marker (optional, auto-generates a white circle if null)
   - `_hudIconImage` (`Image`, private get) — runtime Image component assigned by DistanceBar
 - **Key Properties:**
@@ -195,6 +200,7 @@ Roguelike_Ship/
   - `spawnArea` (`Vector2`) — Y-range for spawn positions
   - `spawnedAsteroids` (`List<GameObject>`, private) — tracks spawned asteroids
 - **Key Methods:**
+  - `Awake()` — sets `warningMessage = "Asteroid Field Detected"`
   - `OnTrigger()` — spawns asteroids in a horizontal band above the player
   - `Update()` — removes null (destroyed) asteroids from list, calls `MarkCompleted()` when empty
 
@@ -212,7 +218,7 @@ Roguelike_Ship/
 ### `DistanceBar.cs`
 - **Path:** `Assets/Scripts/DistanceBar.cs`
 - **Base:** `MonoBehaviour`
-- **Purpose:** UI progress bar representing stage completion. The bar fills vertically (top-to-bottom) and a ship icon moves along it. Positions encounter HUD markers at runtime.
+- **Purpose:** UI progress bar representing stage completion. The bar fills vertically (top-to-bottom) and a ship icon moves along it. Positions encounter HUD markers at runtime. Also houses the encounter **warning system** — flashing red text near trigger points, with sensor-boosted range.
 - **Key Fields:**
   - `percent` (`float`) — normalised progress [0, 1]
   - `_blankBackBar` (`RectTransform`) — full-height background bar
@@ -220,7 +226,16 @@ Roguelike_Ship/
   - `_shipIcon` (`RectTransform`) — icon that slides along the bar
   - `_encounterMarkerSprite` (`Sprite`) — optional custom sprite for encounter markers
   - `waitForEncounterCompletion` (`bool`) — when true, GameManager freezes progress during active encounters
+  - `_warningTMP` (`TMP_Text`) — TextMeshPro text element for warning display
+  - `baseWarningDistance` (`float`) — how close (as % of bar) before warning triggers (default 0.08)
+  - `sensorBonusDistance` (`float`) — extra warning distance per powered sensor (default 0.04)
+  - `flashSpeed` (`float`) — flashes per second (default 4)
+  - `holdDuration` (`float`) — seconds to keep warning visible after trigger (default 1.5)
 - **Key Methods:**
+  - `Start()` — caches warningGraphic/warningSetText from `_warningTMP`, hides text initially
+  - `Update()` — calls `UpdateWarning()` each frame
+  - `UpdateWarning()` — state machine (None → Warning → Hold): in None, checks if next encounter is within threshold (sensor-adjusted) and transitions; in Warning, shows flashing red text; in Hold, continues flashing for `holdDuration` after trigger, then hides
+  - `SetWarningVisible(bool)` — shows/hides the warning text via `Graphic.color.a` + text content
   - `progressBar(timeFactor, timeSinceStageStart, totalStageDuration)` — calculates `percent` and calls `updateVisual()`
   - `updateVisual()` — positions `_shipIcon` and resizes `_travelledBar` based on `percent`
   - `PositionEncounterMarker(Encounter)` — creates a HUD marker GameObject with Image, positions by `triggerPoint`, assigns `_hudIconTexture` if provided, assigns icon to encounter
@@ -241,18 +256,9 @@ Roguelike_Ship/
 ### `CameraController.cs`
 - **Path:** `Assets/Scripts/CameraController.cs`
 - **Base:** `MonoBehaviour`
-- **Purpose:** Free camera controller. WASD + middle-mouse drag for panning, scroll wheel for zoom, O key to lerp back to the ship. Camera position is clamped within configurable bounds.
-- **Key Fields:**
-  - `moveSpeed` (`float`) — WASD movement speed (default 10)
-  - `dragSpeed` (`float`) — middle-mouse drag sensitivity multiplier (default 0.5)
-  - `scrollZoomSpeed` (`float`) — zoom change per scroll notch (default 2)
-  - `minZoom`, `maxZoom` (`float`) — orthographic size range (default 5–50)
-  - `minX`, `maxX`, `minY`, `maxY` (`float`) — camera position clamping bounds
-  - `resetKey` (`KeyCode`) — key to snap camera back to ship (default `O`)
-  - `resetLerpDuration` (`float`) — duration of lerp on reset (default 0.2s)
+- **Purpose:** Free camera controller. WASD + middle-mouse drag for panning (origin-based world-space tracking, 1:1 cursor lock), scroll wheel for zoom, O key to lerp back to the ship. Camera position is clamped within configurable bounds.
 - **Key Fields:**
   - `moveSpeed` (`float`) — WASD movement speed (default 10); scaled by `orthographicSize / minZoom` so movement is faster when zoomed out
-  - `dragSpeed` (`float`) — middle-mouse drag sensitivity multiplier (default 0.5)
   - `scrollZoomSpeed` (`float`) — zoom change per scroll notch (default 2); scaled by `orthographicSize / minZoom` so zoom is faster when zoomed out
   - `minZoom`, `maxZoom` (`float`) — orthographic size range (default 5–50)
   - `minX`, `maxX`, `minY`, `maxY` (`float`) — camera position clamping bounds
@@ -260,7 +266,7 @@ Roguelike_Ship/
   - `resetLerpDuration` (`float`) — duration of lerp on reset (default 0.2s)
 - **Key Methods:**
   - `Start()` — finds ship transform by `"Player"` tag, caches camera component
-  - `Update()` — handles WASD input (speed scaled by zoom), middle-mouse drag, scroll zoom (speed scaled by zoom); on reset key, lerps from current position to ship position with smoothstep easing; clamps final position
+  - `Update()` — handles WASD input (speed scaled by zoom), middle-mouse drag (stores `dragScreenOrigin` + `dragWorldOrigin` on mousedown, computes world delta each frame from static origin for 1:1 tracking), scroll zoom (speed scaled by zoom); on reset key, lerps from current position to ship position with smoothstep easing; clamps final position
   - `SetPositionImmediate(Vector3)` — sets camera position programmatically
   - `SetZoomImmediate(float)` — sets orthographic size programmatically
 - **Relationships:** Attached to Main Camera; uses `GameObject.FindWithTag("Player")` to locate the ship
@@ -494,13 +500,10 @@ Asteroid prefab: `speed = 1.5`, `driftAmount = 0.7`, `spinSpeed = 30`, `health =
 
 ## Known Gaps
 
-- **CameraController drag is screen-pixel-based, not world-space** — middle-mouse drag delta is in screen pixels, converted to world units via `2f * orthographicSize / pixelHeight`. This makes drag feel inconsistent when the camera is rotated or during a reset lerp. Should use world-space drag tracking (drag target position in world space, not mouse delta).
 - **No SensorModule prefab** — `SensorModule.cs` exists and is functional, but no prefab has been created. The code adds the sensor's radii to FogManager when powered, but there's no prefab to assign in the PlayerShip's grid. Create one from `Module_Gatling.prefab` as a base, replacing the script with `SensorModule`.
 - **No enemy/AI system** — no spawner, no enemy behaviour, no collision/damage.
-- **No warning system** — no visual/audio cue before encounter triggers.
 - **No boss fights** — no boss encounter type, no stage completion logic.
 - **No roguelike upgrades** — no mid-run upgrade choices after encounters.
-- **No engines module** — `ShipModule.cs` base class supports it, but no engine module exists yet.
 - **`DistanceBar.updateVisual()`** — position math may contain off-by-one issues (references `_blankBackBar.rect.height` with hardcoded `-1.5f` offset).
 - **`GameManager`** has no stage lifecycle — stage runs immediately, no start/end events, no win/lose condition.
 - **No Input Action Map integration** — `InputSystem_Actions.inputactions` asset exists but scripts use legacy `Input.mousePosition` / `Input.GetMouseButton()` directly.

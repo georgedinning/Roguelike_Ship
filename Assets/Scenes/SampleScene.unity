@@ -1277,6 +1277,7 @@ MonoBehaviour:
   gridRows: 5
   cellSpacing: {x: 1.28, y: 1.28}
   _gatlingGunPrefab: {fileID: 5621701861711319168, guid: ed84039c1571409409dbc40bc8f1efdc, type: 3}
+  _shieldModulePrefab: {fileID: 6957966777338965567, guid: 38ba12e17f6dfe2459a704bc7ac95d9f, type: 3}
 --- !u!66 &1204038836
 CompositeCollider2D:
   m_ObjectHideFlags: 0

@@ -4,6 +4,7 @@ using UnityEngine.UI;
 public abstract class Encounter : MonoBehaviour
 {
     public float triggerPoint;
+    public string warningMessage = "Unknown Encounter";
     public Texture2D _hudIconTexture;
 
     public Image _hudIconImage { get; private set; }

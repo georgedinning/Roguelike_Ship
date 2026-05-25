@@ -48,6 +48,28 @@ public class GameManager : MonoBehaviour
         CheckEncounters();
     }
 
+    public bool HasNextEncounter => nextEncounterIndex < encounters.Count;
+
+    public float NextEncounterTriggerPoint
+    {
+        get
+        {
+            if (nextEncounterIndex < encounters.Count)
+                return encounters[nextEncounterIndex].triggerPoint;
+            return 1f;
+        }
+    }
+
+    public string NextEncounterWarningMessage
+    {
+        get
+        {
+            if (nextEncounterIndex < encounters.Count)
+                return encounters[nextEncounterIndex].warningMessage;
+            return "";
+        }
+    }
+
     private bool HasActiveEncounter()
     {
         foreach (var e in encounters)

@@ -5,9 +5,6 @@ public class CameraController : MonoBehaviour
     [Header("Movement")]
     public float moveSpeed = 10f;
 
-    [Header("Drag")]
-    public float dragSpeed = 0.5f;
-
     [Header("Zoom")]
     public float scrollZoomSpeed = 2f;
     public float minZoom = 5f;
@@ -33,7 +30,8 @@ public class CameraController : MonoBehaviour
 
     // Drag state
     private bool isDragging;
-    private Vector3 dragOrigin;
+    private Vector3 dragScreenOrigin;
+    private Vector3 dragWorldOrigin;
 
     private void Start()
     {
@@ -82,7 +80,8 @@ public class CameraController : MonoBehaviour
             if (Input.GetMouseButtonDown(2))
             {
                 isDragging = true;
-                dragOrigin = Input.mousePosition;
+                dragScreenOrigin = Input.mousePosition;
+                dragWorldOrigin = transform.position;
             }
 
             if (Input.GetMouseButtonUp(2))
@@ -90,16 +89,15 @@ public class CameraController : MonoBehaviour
 
             if (isDragging)
             {
-                Vector3 mouseDelta = Input.mousePosition - dragOrigin;
+                Vector3 screenDelta = Input.mousePosition - dragScreenOrigin;
                 // Convert screen pixels to world units based on zoom level
                 float worldPerPixel = 2f * cam.orthographicSize / cam.pixelHeight;
-                Vector3 dragOffset = new Vector3(
-                    -mouseDelta.x * worldPerPixel * dragSpeed,
-                    -mouseDelta.y * worldPerPixel * dragSpeed,
+                Vector3 worldDelta = new Vector3(
+                    -screenDelta.x * worldPerPixel,
+                    -screenDelta.y * worldPerPixel,
                     0f
                 );
-                targetPos += dragOffset;
-                dragOrigin = Input.mousePosition;
+                targetPos = dragWorldOrigin + worldDelta;
             }
 
             // --- Scroll zoom ---

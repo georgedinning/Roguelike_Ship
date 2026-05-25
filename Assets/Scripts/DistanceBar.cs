@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class DistanceBar : MonoBehaviour
 {
@@ -14,14 +15,105 @@ public class DistanceBar : MonoBehaviour
 
     public bool waitForEncounterCompletion = false;
 
+    [Header("Warning")]
+    public TMP_Text _warningTMP;
+    public float baseWarningDistance = 0.08f;
+    public float sensorBonusDistance = 0.04f;
+    public float flashSpeed = 4f;
+    public float holdDuration = 1.5f;
+
+    private enum WarningState { None, Warning, Hold }
+    private WarningState warnState;
+    private float holdEndTime;
+    private string warnMessage;
+    private float warnTriggerPoint;
+
+    // Cached warning text target
+    private Graphic warningGraphic;
+    private System.Func<string> warningGetText;
+    private System.Action<string> warningSetText;
+
     void Start()
     {
+        if (_warningTMP != null)
+        {
+            warningGraphic = _warningTMP;
+            warningGetText = () => _warningTMP.text;
+            warningSetText = (s) => _warningTMP.text = s;
+        }
 
+        SetWarningVisible(false);
     }
 
     void Update()
     {
+        UpdateWarning();
+    }
 
+    private void UpdateWarning()
+    {
+        if (warningGraphic == null) return;
+
+        GameManager gm = GameManager.Instance;
+        if (gm == null) { SetWarningVisible(false); return; }
+
+        switch (warnState)
+        {
+            case WarningState.None:
+                if (gm.HasNextEncounter)
+                {
+                    float dist = gm.NextEncounterTriggerPoint - percent;
+                    float threshold = baseWarningDistance;
+
+                    SensorModule[] sensors = FindObjectsByType<SensorModule>(FindObjectsSortMode.None);
+                    foreach (var s in sensors)
+                    {
+                        if (s.powered)
+                            threshold += sensorBonusDistance;
+                    }
+
+                    if (dist > 0f && dist <= threshold)
+                    {
+                        warnMessage = gm.NextEncounterWarningMessage;
+                        warnTriggerPoint = gm.NextEncounterTriggerPoint;
+                        warnState = WarningState.Warning;
+                    }
+                }
+                break;
+
+            case WarningState.Warning:
+                if (percent >= warnTriggerPoint)
+                {
+                    warnState = WarningState.Hold;
+                    holdEndTime = Time.time + holdDuration;
+                }
+                break;
+
+            case WarningState.Hold:
+                if (Time.time >= holdEndTime)
+                {
+                    warnState = WarningState.None;
+                    SetWarningVisible(false);
+                    return;
+                }
+                break;
+        }
+
+        if (warnState != WarningState.None)
+        {
+            float alpha = Mathf.PingPong(Time.time * flashSpeed, 1f) * 0.8f + 0.2f;
+            warningGraphic.color = new Color(1f, 0f, 0f, alpha);
+            warningSetText(warnMessage);
+        }
+    }
+
+    private void SetWarningVisible(bool visible)
+    {
+        if (warningGraphic == null) return;
+        Color c = warningGraphic.color;
+        c.a = visible ? 1f : 0f;
+        warningGraphic.color = c;
+        warningSetText(visible ? warnMessage : "");
     }
 
     public void progressBar(float timeFactor, float timeSinceStageStart, float totalStageDuration)

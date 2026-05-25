@@ -61,12 +61,15 @@ The ship has several systems that can be toggled on or off. Each consumes from a
 - **Sensors** — toggleable on/off via power budget. Each powered sensor contributes `fogStartRadius`, `fogEndRadius`, `radarEndRadius` to the fog of war system. Multiple sensors stack additively.
 - **Shields** — cost 2 power. Deployable energy shield that expands outward, absorbs one `"Hazard"` hit per cycle, deals 50 damage to the hazard, then collapses smoothly and recharges. Also blocks hits while expanding, not just when fully deployed. `Shield.cs` on the bubble child forwards trigger collisions to `ShieldModule` on a separate layer to avoid shift+click interference.
 
-**Not yet implemented:**
-| System | Power | Effect When On |
-|---|---|---|
-| Engines | 1 | Ship can move |
+*(The ship has no propulsion — see rationale below.)*
 
-*(System list is extensible — more systems can be added later.)*
+### Why the Ship Doesn't Move
+
+The player ship is a fixed platform. It can aim (change direction via mouse cursor) but cannot change its position relative to the world. This is deliberate:
+
+- **Tactical depth comes from resource management, not movement skill.** Power allocation, time control timing, and aim precision are the three skill axes — not dodging or positioning.
+- **The world moves, not the ship.** Asteroids drift in, the distance bar progresses, and future enemy ships will approach the player. The player reacts to what the world sends; they don't choose where to go.
+- **Keeps the ship as a fixed target.** This enables the grid-based module system (modules placed in a fixed layout around the ship) and keeps the camera as a free-floating observation tool rather than a follow-cam.
 
 ---
 
@@ -171,7 +174,6 @@ The ship is stationary and does not use WASD/arrow movement. All tactical depth 
 - CameraController uses screen-pixel drag (not world-space), feels inconsistent.
 - No enemy/AI system (chasers, turrets, bombers).
 - No boss fights.
-- No engines module.
 - No warning system before encounter triggers.
 - No roguelike upgrade system.
 - No stage lifecycle (start/end events, multi-stage progression).
@@ -180,11 +182,10 @@ The ship is stationary and does not use WASD/arrow movement. All tactical depth 
 ### Future Feature Priority
 | Priority | Feature | Notes |
 |---|---|---|
-| 1 | Ship systems & power budget | Weapons/shields/engines/sensors toggleable, limited power, 1–5 keys |
+| 1 | Ship systems & power budget | Weapons/shields/sensors toggleable, limited power, 1–5 keys |
 | 2 | Warning system | Visual/audio cue before encounter triggers, ties into sensors |
 | 3 | Enemy ships (AI combat) | Next encounter type after asteroid fields |
 | 4 | Boss fights | Unique boss at 100%, multiple phases |
 | 5 | Roguelike upgrades | Mid-run choices after defeating encounters |
-| 6 | Engines module | Ship movement (costs 1 power) |
-| 7 | Stage lifecycle | Start/end events, multi-stage progression, permadeath |
-| 8 | Camera world-space drag | Replace screen-pixel drag with world-space drag target |
+| 6 | Stage lifecycle | Start/end events, multi-stage progression, permadeath |
+| 7 | Camera world-space drag | Replace screen-pixel drag with world-space drag target |

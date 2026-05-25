@@ -7,6 +7,11 @@ public class AsteroidFieldEncounter : Encounter
     public int count = 30;
     public Vector2 spawnArea = new Vector2(0, 50);
 
+    private void Awake()
+    {
+        warningMessage = "Asteroid Field Detected";
+    }
+
     private List<GameObject> spawnedAsteroids;
 
     public override void OnTrigger()
