@@ -60,7 +60,8 @@ Roguelike_Ship/
 │   │   ├── Bullet.prefab                 # Bullet projectile prefab
 │   │   ├── Asteroid.prefab               # Asteroid enemy prefab
 │   │   ├── ShipModules/
-│   │   │   └── Module_Gatling.prefab     # Gatling gun turret module
+│   │   │   ├── Module_Gatling.prefab     # Gatling gun turret module
+│   │   │   └── Module_Shield.prefab     # Shield module (bubble + hitbox)
 │   │   ├── UI/
 │   │   │   └── Segment.prefab            # Power bar segment image
 │   │   └── Encounters/
@@ -84,6 +85,8 @@ Roguelike_Ship/
 │   │   ├── TestAsteroidSpawner.cs        # Legacy test spawner (unused, safe to delete)
 │   │   ├── ShipModules/
 │   │   │   ├── ShipModule.cs             # Base class with powerCost/powered/OnPowerChanged
+│   │   │   ├── Shield.cs                 # Forwards trigger collisions from bubble to ShieldModule
+│   │   │   ├── ShieldModule.cs           # Expanding/collapsing shield bubble, absorbs hazards
 │   │   │   ├── GatlingGunModule.cs       # Mouse-aimed gatling turret with magazine/reload
 │   │   │   └── SensorModule.cs           # Sensor array; extends fog detection range
 │   │   └── Fog/
@@ -315,6 +318,7 @@ Roguelike_Ship/
   - `gridRows` (`int`) — number of rows in the grid (default 5)
   - `cellSpacing` (`Vector2`) — horizontal and vertical spacing between slot positions (auto-centers the grid around origin)
   - `_gatlingGunPrefab` (`GameObject`) — prefab reference for the gatling gun module
+  - `_shieldModulePrefab` (`GameObject`) — prefab reference for the shield module
   - `_fogOverlay` (`SpriteRenderer`) — full-screen overlay with FogOverlayShader for fog of war
   - `moduleSlots` (`ModuleSlot[]`, private) — runtime module grid, allocated in `Start()`
   - `currentHealth` (`int`, private) — current health
@@ -326,7 +330,7 @@ Roguelike_Ship/
   - `SetModule(int, GameObject)` — assigns a module prefab to a specific slot index
   - `SpawnModuleAtSlot(int, bool rebuildCollider = true)` — instantiates the prefab at computed grid position; optionally refreshes CompositeCollider2D (pass `false` for batch spawns)
   - `RefreshHullCollider()` — disables and re-enables the `CompositeCollider2D` to rebuild geometry from current child colliders
-  - `Start()` — initialises `currentHealth = maxHealth`, allocates grid, fills middle row with `_gatlingGunPrefab`, spawns all modules with `rebuildCollider: false`, calls `RefreshHullCollider()` once, then greedily powers on modules via `HasAvailablePower`/`IncreaseUsage`/`SetPowered` (grid-order priority), finally syncs `FogManager.RecalculateRadii()`
+  - `Start()` — initialises `currentHealth = maxHealth`, allocates grid, fills middle row with `_gatlingGunPrefab`, fills row above with `_shieldModulePrefab`, spawns all modules with `rebuildCollider: false`, calls `RefreshHullCollider()` once, then greedily powers on modules via `HasAvailablePower`/`IncreaseUsage`/`SetPowered` (grid-order priority), finally syncs `FogManager.RecalculateRadii()`
   - `Update()` — handles shift+click module toggling via `Physics2D.OverlapPoint`
   - `ToggleModulePower(ShipModule)` — toggles a module: if turning on checks `powerBar.HasAvailablePower()`, updates `powerBar` directly via `IncreaseUsage`/`DecreaseUsage` (no module iteration)
   - `TakeDamage(amount)` — reduces health, calls `OnDeath()` at zero
@@ -386,6 +390,42 @@ Roguelike_Ship/
   - `OnPowerStateChanged()` — tints sprites white/grey based on `powered`, calls `FogManager.RecalculateRadii()` to update stacked radii
 - **Relationships:** Used by `FogManager` for radius stacking; parent class is `ShipModule`
 
+### `Shield.cs`
+- **Path:** `Assets/Scripts/ShipModules/Shield.cs`
+- **Base:** `MonoBehaviour`
+- **Purpose:** Placed on the ShieldBubble child GameObject. Forwards trigger collisions from the bubble's CircleCollider2D to the parent ShieldModule so the hitbox can live on a different layer (e.g. `"Default"`) without interfering with shift+click module selection on the `"ShipModules"` layer.
+- **Key Fields:**
+  - `parent` (`ShieldModule`, private) — cached parent reference
+- **Key Methods:**
+  - `Awake()` — caches `ShieldModule` parent via `GetComponentInParent`
+  - `OnTriggerEnter2D(Collider2D)` — forwards to `parent.OnHitboxTriggerEnter()`
+- **Relationships:** Forwards to `ShieldModule.OnHitboxTriggerEnter()`
+
+### `ShieldModule.cs`
+- **Path:** `Assets/Scripts/ShipModules/ShieldModule.cs`
+- **Base:** `ShipModule`
+- **Purpose:** Deployable energy shield. State machine: Idle → Expanding → Deployed → Collapsing → Recharging → (cycle). When powered, expands a bubble outward from the module. Absorbs one `"Hazard"`-tagged collision per cycle, damaging the hazard, then collapses smoothly and recharges. Hazards are also blocked during the expanding phase.
+- **Key Fields:**
+  - `shieldRadius` (`float`) — max radius in world units (default 3)
+  - `shieldSpeed` (`float`) — expansion speed in units/sec (default 10)
+  - `rechargeSpeed` (`float`) — seconds to recharge after collapsing (default 3)
+  - `collapseSpeed` (`float`) — shrink speed after absorbing a hit (default 20)
+  - `shieldDamage` (`float`) — damage dealt to hazard on collision (default 50)
+  - `_bubble` (`GameObject`) — assigned child with SpriteRenderer + CircleCollider2D
+  - `powerCost` (`int`, set in Awake) — power budget cost (2)
+- **Key Methods:**
+  - `Awake()` — sets `powerCost = 2`, sets up collider and visual, calls `OnPowerStateChanged()`
+  - `Update()` — drives state machine (Expanding/Collapsing/Recharging)
+  - `OnHitboxTriggerEnter(Collider2D)` — public, called by `Shield.cs`; absorbs hazard, transitions to Collapsing
+  - `OnPowerStateChanged()` — enables/disables bubble and collider, tints structural sprites
+- **States:**
+  - `Idle` — unpowered, everything hidden
+  - `Expanding` — bubble grows at `shieldSpeed`, collider active, can block hazards
+  - `Deployed` — at full `shieldRadius`, waiting for hit
+  - `Collapsing` — shrinks at `collapseSpeed`, collider still active visually
+  - `Recharging` — timer ticks, bubble hidden, then re-enables and expands
+- **Relationships:** `Shield.cs` forwards triggers; parent class is `ShipModule`; instantiated by `PlayerShip` in row 3
+
 ### `FogManager.cs`
 - **Path:** `Assets/Scripts/Fog/FogManager.cs`
 - **Base:** `MonoBehaviour`
@@ -442,6 +482,7 @@ Encounters are spawned programmatically by `EncounterSpawner` at stage start. HU
 | `Assets/Prefab/Bullet.prefab` | `SpriteRenderer` (bullet.png), `Rigidbody2D`, `Bullet` script | Spawned by `GatlingGunModule.Fire()` |
 | `Assets/Prefab/Asteroid.prefab` | `SpriteRenderer` (Asteroid.png), `Rigidbody2D`, `Asteroid` script | Spawned by `AsteroidFieldEncounter` |
 | `Assets/Prefab/ShipModules/Module_Gatling.prefab` | Gatling turret assembly, `GatlingGunModule` script | Spawned by `PlayerShip` in grid |
+| `Assets/Prefab/ShipModules/Module_Shield.prefab` | `ShieldModule` script, `ShieldBubble` child with `Shield.cs`, `SpriteRenderer`, `CircleCollider2D` | Spawned by `PlayerShip` in grid |
 | `Assets/Prefab/UI/Segment.prefab` | `Image` component | Cloned by `PowerBar` for segment display |
 | `Assets/Prefab/Encounters/AsteroidFieldEncounter.prefab` | `AsteroidFieldEncounter` script | Instantiated by `EncounterSpawner` |
 
@@ -454,11 +495,12 @@ Asteroid prefab: `speed = 1.5`, `driftAmount = 0.7`, `spinSpeed = 30`, `health =
 ## Known Gaps
 
 - **CameraController drag is screen-pixel-based, not world-space** — middle-mouse drag delta is in screen pixels, converted to world units via `2f * orthographicSize / pixelHeight`. This makes drag feel inconsistent when the camera is rotated or during a reset lerp. Should use world-space drag tracking (drag target position in world space, not mouse delta).
+- **No SensorModule prefab** — `SensorModule.cs` exists and is functional, but no prefab has been created. The code adds the sensor's radii to FogManager when powered, but there's no prefab to assign in the PlayerShip's grid. Create one from `Module_Gatling.prefab` as a base, replacing the script with `SensorModule`.
 - **No enemy/AI system** — no spawner, no enemy behaviour, no collision/damage.
-- **No shields/engines systems** — only weapons (GatlingGunModule) and sensors (SensorModule) wired up; shields and engines exist as stubs in the design doc but have no modules yet.
 - **No warning system** — no visual/audio cue before encounter triggers.
 - **No boss fights** — no boss encounter type, no stage completion logic.
 - **No roguelike upgrades** — no mid-run upgrade choices after encounters.
+- **No engines module** — `ShipModule.cs` base class supports it, but no engine module exists yet.
 - **`DistanceBar.updateVisual()`** — position math may contain off-by-one issues (references `_blankBackBar.rect.height` with hardcoded `-1.5f` offset).
 - **`GameManager`** has no stage lifecycle — stage runs immediately, no start/end events, no win/lose condition.
 - **No Input Action Map integration** — `InputSystem_Actions.inputactions` asset exists but scripts use legacy `Input.mousePosition` / `Input.GetMouseButton()` directly.

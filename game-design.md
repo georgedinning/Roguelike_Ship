@@ -57,13 +57,13 @@ The player has command over time and ship systems, enabling tactical play rather
 The ship has several systems that can be toggled on or off. Each consumes from a limited **power budget**.
 
 **Implemented:**
-- **Power Budget System** — `PowerBar` tracks capacity/usage, `PlayerShip` greedily powers on modules at start, shift+click toggles individual modules. Weapons (GatlingGunModule) and Sensors (SensorModule) wired up.
+- **Power Budget System** — `PowerBar` tracks capacity/usage, `PlayerShip` greedily powers on modules at start, shift+click toggles individual modules. Weapons (GatlingGunModule), Shields (ShieldModule), and Sensors (SensorModule) wired up.
 - **Sensors** — toggleable on/off via power budget. Each powered sensor contributes `fogStartRadius`, `fogEndRadius`, `radarEndRadius` to the fog of war system. Multiple sensors stack additively.
+- **Shields** — cost 2 power. Deployable energy shield that expands outward, absorbs one `"Hazard"` hit per cycle, deals 50 damage to the hazard, then collapses smoothly and recharges. Also blocks hits while expanding, not just when fully deployed. `Shield.cs` on the bubble child forwards trigger collisions to `ShieldModule` on a separate layer to avoid shift+click interference.
 
 **Not yet implemented:**
 | System | Power | Effect When On |
 |---|---|---|
-| Shields | 2 | Absorbs incoming damage, regenerates slowly |
 | Engines | 1 | Ship can move |
 
 *(System list is extensible — more systems can be added later.)*
@@ -164,12 +164,14 @@ The ship is stationary and does not use WASD/arrow movement. All tactical depth 
 - `FogOverlayShader` — URP unlit shader with radial alpha from `_FogStart`/`_FogEnd`.
 - `CameraController` — free camera with WASD/drag/zoom/O-reset, zoom-scaled speeds.
 - Power budget system — modules start `powered=false`, `PlayerShip` greedily powers on in grid order, shift+click toggles.
+- `ShieldModule` — deployable energy shield with Expanding/Deployed/Collapsing/Recharging state machine, absorbs one hazard per cycle, auto-cycles while powered.
+- `Shield.cs` — forwards trigger collisions from ShieldBubble child to parent ShieldModule, enabling separate hitbox layers.
 
 ### Known Gaps (from instructions.md)
 - CameraController uses screen-pixel drag (not world-space), feels inconsistent.
 - No enemy/AI system (chasers, turrets, bombers).
 - No boss fights.
-- No shields or engines modules.
+- No engines module.
 - No warning system before encounter triggers.
 - No roguelike upgrade system.
 - No stage lifecycle (start/end events, multi-stage progression).
@@ -180,9 +182,9 @@ The ship is stationary and does not use WASD/arrow movement. All tactical depth 
 |---|---|---|
 | 1 | Ship systems & power budget | Weapons/shields/engines/sensors toggleable, limited power, 1–5 keys |
 | 2 | Warning system | Visual/audio cue before encounter triggers, ties into sensors |
-| 3 | Shields | Absorbs damage, regenerates slowly |
-| 4 | Enemy ships (AI combat) | Next encounter type after asteroid fields |
-| 5 | Boss fights | Unique boss at 100%, multiple phases |
-| 6 | Roguelike upgrades | Mid-run choices after defeating encounters |
-| 7 | `ShipModule.cs` base class | Shared interface for all modules |
-| 8 | Stage lifecycle | Start/end events, multi-stage progression, permadeath |
+| 3 | Enemy ships (AI combat) | Next encounter type after asteroid fields |
+| 4 | Boss fights | Unique boss at 100%, multiple phases |
+| 5 | Roguelike upgrades | Mid-run choices after defeating encounters |
+| 6 | Engines module | Ship movement (costs 1 power) |
+| 7 | Stage lifecycle | Start/end events, multi-stage progression, permadeath |
+| 8 | Camera world-space drag | Replace screen-pixel drag with world-space drag target |

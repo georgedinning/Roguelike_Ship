@@ -27,6 +27,7 @@ public class PlayerShip : MonoBehaviour
     public Vector2 cellSpacing = new Vector2(1f, 1f);
     [Header("Module Prefabs")]
     public GameObject _gatlingGunPrefab;
+    public GameObject _shieldModulePrefab;
     private ModuleSlot[] moduleSlots;
 
     private void Awake()
@@ -137,6 +138,18 @@ public class PlayerShip : MonoBehaviour
         {
             int slotIndex = middleRow * gridColumns + col;
             SetModule(slotIndex, _gatlingGunPrefab);
+        }
+
+        // Fill the row above (row 3) with shields (so the greedy power-on
+        // processes weapons first and gives them priority)
+        if (_shieldModulePrefab != null)
+        {
+            int shieldRow = 3;
+            for (int col = 0; col < gridColumns; col++)
+            {
+                int slotIndex = shieldRow * gridColumns + col;
+                SetModule(slotIndex, _shieldModulePrefab);
+            }
         }
 
         // Spawn all modules (don't rebuild composite on each spawn — do it once after)
